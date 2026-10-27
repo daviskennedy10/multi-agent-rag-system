@@ -10,7 +10,7 @@ from app.rag.vector_store import openai_client
 def generate_answer(question: str) -> str:
     # STEP 1: RETRIEVAL
     # Search Chroma for the 5 most relevant document chunks.
-    chunks = retrieve(question, k=5, max_distance=1.0)
+    chunks = retrieve(question, k=5)
 
     # If our database is empty, we cannot generate
     # an answer grounded in documentation.
@@ -76,22 +76,23 @@ Rules:
     return response.choices[0].message.content or ""
 
 
-# This block runs only when executing this file directly
-# using: python -m app.rag.generate
+
 if __name__ == "__main__":
+    # Test generation across three different FastAPI topics.
+    test_questions = [
+        "How does dependency injection work in FastAPI?",
+        "How do I implement OAuth2 authentication in FastAPI?",
+        "How can I upload files using FastAPI?",
+    ]
 
-    # Test 1: The documentation contains this information.
-    supported_question = "How does FastAPI support asynchronous functions?"
+    # Run each question through the complete RAG pipeline.
+    for question in test_questions:
+        print(f"\n{'=' * 60}")
+        print(f"QUESTION: {question}\n")
 
-    # Test 2: Our documentation doesn't explain this topic.
-    unsupported_question = "How does FastAPI implement WebSocket authentication?"
-
-    # Run both questions through our RAG pipeline.
-    for question in [supported_question, unsupported_question]:
-        print(f"\nQuestion: {question}")
-
-        # Retrieve relevant chunks and generate a grounded answer.
+        # Retrieve documentation and generate a cited answer.
         answer = generate_answer(question)
 
-        print(f"Answer: {answer}")
-        print("-" * 50)
+        print(f"ANSWER:\n{answer}")
+        print("=" * 60)
+

@@ -37,12 +37,27 @@ def retrieve(query: str, k: int = 5, max_distance: float | None = None,) -> list
 
 
 if __name__ == "__main__":
-    query = "How does FastAPI support asynchronous functions?"
+    # Test questions covering different FastAPI concepts.
+    test_questions = [
+        "How does dependency injection work in FastAPI?",
+        "How do I implement OAuth2 authentication in FastAPI?",
+        "How can I upload files using FastAPI?",
+    ]
 
-    results = retrieve(query)
+    # Test retrieval separately for each question.
+    for question in test_questions:
+        print(f"\nQUESTION: {question}")
 
-    for result in results:
-        print(f"\nID: {result['id']}")
-        print(f"Source: {result['source']}")
-        print(f"Distance: {result['distance']:.4f}")
-        print(f"Text: {result['text'][:200]}")
+        # Retrieve the 3 closest chunks.
+        # No distance threshold yet: we're inspecting raw rankings.
+        results = retrieve(question, k=3)
+
+        # Display the source and distance of each result.
+        for index, result in enumerate(results, start=1):
+            print(f"\nResult {index}")
+            print(f"Source: {result['source']}")
+            print(f"Distance: {result['distance']:.4f}")
+            print(f"Preview: {result['text'][:180]}")
+
+        print("-" * 60)
+
