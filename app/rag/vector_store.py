@@ -33,6 +33,20 @@ def embed_text(text: str) -> list[float]:
     return response.data[0].embedding
 
 
+def reset_collection():
+    # Delete the existing collection, including all old chunks.
+    # WARNING: This permanently removes the collection's data.
+    chroma_client.delete_collection(name="developer_docs")
+
+    # Recreate an empty collection with the same name.
+    global collection
+    collection = chroma_client.get_or_create_collection(
+        name="developer_docs"
+    )
+
+    # Confirm the new collection is empty.
+    print(f"Database reset. Chunk count: {collection.count()}")
+
 def index_documents(batch_size: int = 50, limit: int | None = None):
     # Load all documentation and split it into chunks.
     documents = load_documents("data/raw")
@@ -94,9 +108,11 @@ def index_documents(batch_size: int = 50, limit: int | None = None):
 
 
 if __name__ == "__main__":
-    # Test with only 5 chunks in one API request.
-    # This verifies batching before full corpus ingestion.
-    index_documents(batch_size=5, limit=5)
+    # Start with a clean database to avoid stale documents.
+    reset_collection()
 
-    # Confirm the database contains the inserted chunks.
-    print(f"Database now contains {collection.count()} chunks.")
+    # Index the complete documentation corpus in batches of 50.
+    index_documents(batch_size=50)
+
+    # Verify how many chunks were stored.
+    print(f"Final database count: {collection.count()}")
