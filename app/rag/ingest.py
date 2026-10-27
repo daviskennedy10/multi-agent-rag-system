@@ -1,61 +1,70 @@
+
 from pathlib import Path
 
+# LangChain utility for splitting text at natural boundaries.
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 150) -> list[str]:
+
+def chunk_text(
+    text: str,
+    chunk_size: int = 800,
+    overlap: int = 150,
+) -> list[str]:
+    # Validate the chunking configuration.
     if chunk_size <= 0 or not 0 <= overlap < chunk_size:
         raise ValueError("Invalid chunk size or overlap")
 
-    chunks = []
-    step = chunk_size - overlap
+    # Prefer splitting at paragraphs, lines, and spaces.
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=overlap,
+        separators=["\n\n", "\n", " ", ""],
+        length_function=len,
+    )
 
-    for start in range(0, len(text), step):
-        chunk = text[start:start + chunk_size]
-
-        if chunk:
-            chunks.append(chunk)
-
-        if start + chunk_size >= len(text):
-            break
-
-    return chunks
-
+    # Return the generated text chunks.
+    return splitter.split_text(text)
 
 
 def load_documents(directory: str) -> list[dict]:
-    # Root directory containing all documentation.
+    # Root folder containing our documentation.
     root = Path(directory)
 
-    # Store the processed document chunks.
+    # Store all processed chunks here.
     documents = []
 
-    # Recursively find all .txt files.
-    for path in sorted(root.rglob("*.txt")):
+    # Recursively find Markdown and plain-text files.
+    paths = sorted(
+        path for path in root.rglob("*")
+        if path.is_file() and path.suffix.lower() in {".md", ".txt"}
+    )
 
-        # Read the document's contents.
+    for path in paths:
+        # Read each document as UTF-8 text.
         text = path.read_text(encoding="utf-8")
 
-        # Ignore empty documents.
+        # Ignore empty files.
         if not text.strip():
             continue
 
-        # Get the relative path, e.g. fastapi/authentication.txt.
+        # Example: fastapi/tutorial/dependencies.md
         relative_path = path.relative_to(root)
 
-        # Extract the technology name from the first folder.
+        # The first folder identifies the technology.
         technology = (
             relative_path.parts[0]
             if len(relative_path.parts) > 1
             else "general"
         )
 
-        # Split the document into overlapping chunks.
-        for index, chunk in enumerate(chunk_text(text)):
+        # Split the document into smaller, overlapping chunks.
+        chunks = chunk_text(text)
 
-            # Create an ID containing the full relative path.
-            # This prevents collisions between different folders.
+        for index, chunk in enumerate(chunks):
+            # Use the full relative path to avoid ID collisions.
             chunk_id = f"{relative_path.as_posix()}::{index}"
 
-            # Store the chunk and its source information.
+            # Preserve the text and its source information.
             documents.append({
                 "id": chunk_id,
                 "source": str(relative_path),
@@ -63,18 +72,19 @@ def load_documents(directory: str) -> list[dict]:
                 "text": chunk,
             })
 
-    # Return all chunks ready for embedding.
     return documents
 
 
-
 if __name__ == "__main__":
+    # Load and chunk all available documentation.
     documents = load_documents("data/raw")
 
+    # Show how much documentation we processed.
     print(f"Total chunks: {len(documents)}")
 
-    for document in documents:
+    # Display only the first three chunks to avoid huge output.
+    for document in documents[:3]:
         print(f"\nID: {document['id']}")
-        print(f"Source: {document['source']}")
+        print(f"Technology: {document['technology']}")
         print(f"Characters: {len(document['text'])}")
-        print(f"Preview: {document['text'][:100]}")
+        print(f"Preview: {document['text'][:150]}")
