@@ -6,6 +6,8 @@ from app.agents.state import AgentState
 
 from app.agents.research import research_agent
 
+from app.agents.code import code_agent
+
 
 def supervisor(state: AgentState) -> dict:
     # Temporary routing logic to verify graph execution.
@@ -23,13 +25,6 @@ def supervisor(state: AgentState) -> dict:
     return {
         "selected_agent": selected,
         "trace": state["trace"] + [f"Supervisor selected {selected}"],
-    }
-
-def code_agent(state: AgentState) -> dict:
-    # Placeholder: real code-analysis tools will be added later.
-    return {
-        "answer": "Code agent received the question.",
-        "trace": state["trace"] + ["Code agent executed"],
     }
 
 
@@ -78,10 +73,17 @@ graph = builder.compile()
 
 
 if __name__ == "__main__":
-    # Ask a documentation question that should route to Research.
-    question = "How does dependency injection work in FastAPI?"
+    # Provide Python code containing a division-by-zero bug.
+    question = """
+Analyze this Python code:
 
-    # Execute the complete LangGraph workflow.
+def divide(a, b):
+    return a / b
+
+print(divide(10, 0))
+"""
+
+    # Execute the complete supervisor workflow.
     result = graph.invoke({
         "question": question,
         "selected_agent": "research",
@@ -89,7 +91,12 @@ if __name__ == "__main__":
         "trace": [],
     })
 
-    # Inspect which agent executed and what it returned.
+    # Display which agent the supervisor selected.
     print(f"\nSelected agent: {result['selected_agent']}")
+
+    # Display the agent's analysis.
     print(f"\nAnswer:\n{result['answer']}")
+
+    # Display the nodes that executed.
     print(f"\nTrace: {result['trace']}")
+

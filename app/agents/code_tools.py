@@ -1,6 +1,34 @@
 
 import ast
 
+import re
+
+def extract_python_code(message: str) -> str:
+    # First, look for a fenced Python code block.
+    # Example: ```python ... ```
+    match = re.search(
+        r"```(?:python|py)\s*\n(.*?)```",
+        message,
+        re.DOTALL | re.IGNORECASE,
+    )
+
+    if match:
+        # Return only the code inside the fenced block.
+        return match.group(1).strip()
+
+    # For our current test, code starts at a function definition.
+    # This is a temporary fallback, not a general code extractor.
+    match = re.search(
+        r"(?m)^(?:async\s+def|def|class)\s+\w+",
+        message,
+    )
+
+    if match:
+        return message[match.start():].strip()
+
+    # Return an empty string when no code can be identified.
+    return ""
+
 
 def analyze_python_code(code: str) -> dict:
     # Parse Python source code without executing it.
