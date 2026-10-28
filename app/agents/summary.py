@@ -1,9 +1,10 @@
 
 import os
 
-# Import our Chroma retriever and OpenAI client.
+
 from app.rag.retriever import retrieve
-from app.rag.vector_store import openai_client
+
+from app.agents.llm_providers import generate_routed
 
 # Import the shared LangGraph state and citation validator.
 from app.agents.state import AgentState
@@ -56,24 +57,25 @@ Incorrect:
 If multiple chunks support a claim, cite them separately.
 """
 
-        # Ask the LLM to summarize the retrieved documentation.
-        response = openai_client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": (
-                        f"Documentation:\n{context}\n\n"
-                        f"Summarization request: {question}"
-                    ),
-                },
-            ],
-            temperature=0,
+        
+        # Combine the summarization instructions and retrieved context.
+        prompt = (
+            f"{system_prompt}\n\n"
+            f"Documentation:\n{context}\n\n"
+            f"Summarization request: {question}"
         )
 
-        # Extract the generated summary.
-        answer = response.choices[0].message.content or ""
+        # Select a provider based on task complexity.
+        result = generate_routed(
+            question=question,
+            agent="summary",
+            prompt=prompt,
+        )
+
+        # Extract the answer and actual provider decision.
+        answer = result["answer"]
+        routing = result["routing"]
+
 
         # Verify that detected citations refer to retrieved chunks.
         validation = validate_citations(answer, chunks)
@@ -89,12 +91,15 @@ If multiple chunks support a claim, cite them separately.
         if not validation["valid"]:
             raise ValueError("Summary contains invalid citations")
 
-        # Return the summary and execution trace.
+        # Return the summary and provider-routing information.
         return {
             "answer": answer,
+            "routing": routing,
             "trace": state["trace"] + [
                 "Summary agent executed",
                 f"Summarized {len(chunks)} retrieved chunks",
+                f"LLM: {routing['provider']} / {routing['model']}",
+                f"Routing reason: {routing['reason']}",
             ],
         }
 
