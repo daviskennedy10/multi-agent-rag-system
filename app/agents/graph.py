@@ -8,6 +8,9 @@ from app.agents.research import research_agent
 
 from app.agents.code import code_agent
 
+# Import our real Summary Agent implementation.
+from app.agents.summary import summary_agent
+
 
 def supervisor(state: AgentState) -> dict:
     # Temporary routing logic to verify graph execution.
@@ -27,13 +30,6 @@ def supervisor(state: AgentState) -> dict:
         "trace": state["trace"] + [f"Supervisor selected {selected}"],
     }
 
-
-def summary_agent(state: AgentState) -> dict:
-    # Placeholder: document summarization comes later.
-    return {
-        "answer": "Summary agent received the question.",
-        "trace": state["trace"] + ["Summary agent executed"],
-    }
 
 
 def route_agent(state: AgentState) -> str:
@@ -72,31 +68,31 @@ for agent in ["research", "code", "summary"]:
 graph = builder.compile()
 
 
+
 if __name__ == "__main__":
-    # Provide Python code containing a division-by-zero bug.
-    question = """
-Analyze this Python code:
+    # Test all three specialized agents through the supervisor.
+    questions = [
+        "How does FastAPI dependency injection work?",
+        "Analyze this Python code:\ndef divide(a, b):\n    return a / b",
+        "Summarize FastAPI's OAuth2 security features.",
+    ]
 
-def divide(a, b):
-    return a / b
+    for question in questions:
+        # Start each question with a fresh graph state.
+        result = graph.invoke({
+            "question": question,
+            "selected_agent": "research",
+            "answer": "",
+            "trace": [],
+        })
 
-print(divide(10, 0))
-"""
+        # Display the supervisor's routing decision.
+        print(f"\n{'=' * 60}")
+        print(f"QUESTION: {question}")
+        print(f"SELECTED AGENT: {result['selected_agent']}")
 
-    # Execute the complete supervisor workflow.
-    result = graph.invoke({
-        "question": question,
-        "selected_agent": "research",
-        "answer": "",
-        "trace": [],
-    })
+        # Show a short answer preview to keep output readable.
+        print(f"ANSWER: {result['answer'][:300]}...")
 
-    # Display which agent the supervisor selected.
-    print(f"\nSelected agent: {result['selected_agent']}")
-
-    # Display the agent's analysis.
-    print(f"\nAnswer:\n{result['answer']}")
-
-    # Display the nodes that executed.
-    print(f"\nTrace: {result['trace']}")
-
+        # Display which nodes executed.
+        print(f"TRACE: {result['trace']}")
