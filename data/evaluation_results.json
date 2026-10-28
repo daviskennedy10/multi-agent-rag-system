@@ -1,0 +1,152 @@
+[
+  {
+    "id": "q1",
+    "question": "How does dependency injection work in FastAPI?",
+    "answer": "Dependency injection in FastAPI allows your path operation functions to declare the things they require to work, called \"dependencies.\" FastAPI then automatically takes care of providing (\"injecting\") those dependencies when calling your functions. This system supports dependencies that themselves can have dependencies, creating a hierarchy or graph of dependencies, all handled automatically by the framework.\n\nYou never call the dependency functions directly; FastAPI executes them and injects their results into your path operation functions. This makes it easy to share common logic, database connections, authentication checks, and other reusable components. The system also supports automatic validation of parameters defined in dependencies and integrates well with databases, frontends, and external packages.\n\nIn summary, dependency injection in FastAPI is a simple yet powerful mechanism where your code declares what it needs, and FastAPI provides those requirements automatically before executing your path operation functions [fastapi/features.md::7], [fastapi/tutorial/dependencies/index.md::0], [fastapi/tutorial/dependencies/index.md::10], [fastapi/fastapi_basics.txt::0].",
+    "faithfulness": 1.0,
+    "contexts": [
+      "### Dependency Injection { #dependency-injection }\n\nFastAPI includes an extremely easy to use, but extremely powerful <dfn title='also known as \"components\", \"resources\", \"services\", \"providers\"'><strong>Dependency Injection</strong></dfn> system.\n\n* Even dependencies can have dependencies, creating a hierarchy or **\"graph\" of dependencies**.\n* All **automatically handled** by the framework.\n* All the dependencies can require data from requests and **augment the path operation** constraints and automatic documentation.\n* **Automatic validation** even for *path operation* parameters defined in dependencies.\n* Support for complex user authentication systems, **database connections**, etc.\n* **No compromise** with databases, frontends, etc. But easy integration with all of them.",
+      "# Dependencies { #dependencies }\n\n**FastAPI** has a very powerful but intuitive **<dfn title=\"also known as components, resources, providers, services, injectables\">Dependency Injection</dfn>** system.\n\nIt is designed to be very simple to use, and to make it very easy for any developer to integrate other components with **FastAPI**.\n\n## What is \"Dependency Injection\" { #what-is-dependency-injection }\n\n**\"Dependency Injection\"** means, in programming, that there is a way for your code (in this case, your *path operation functions*) to declare things that it requires to work and use: \"dependencies\".\n\nAnd then, that system (in this case **FastAPI**) will take care of doing whatever is needed to provide your code with those needed dependencies (\"inject\" the dependencies).",
+      "You never call those functions directly. They are called by your framework (in this case, **FastAPI**).\n\nWith the Dependency Injection system, you can also tell **FastAPI** that your *path operation function* also \"depends\" on something else that should be executed before your *path operation function*, and **FastAPI** will take care of executing it and \"injecting\" the results.\n\nOther common terms for this same idea of \"dependency injection\" are:\n\n* resources\n* providers\n* services\n* injectables\n* components\n\n## **FastAPI** plug-ins { #fastapi-plug-ins }",
+      "## **FastAPI** compatibility { #fastapi-compatibility }\n\nThe simplicity of the dependency injection system makes **FastAPI** compatible with:\n\n* all the relational databases\n* NoSQL databases\n* external packages\n* external APIs\n* authentication and authorization systems\n* API usage monitoring systems\n* response data injection systems\n* etc.\n\n## Simple and Powerful { #simple-and-powerful }\n\nAlthough the hierarchical dependency injection system is very simple to define and use, it's still very powerful.\n\nYou can define dependencies that in turn can define dependencies themselves.",
+      "# FastAPI Basics\n\nFastAPI is a Python web framework for building APIs using standard Python type hints.\n\n## Path Operations\n\nA path operation connects an HTTP method and URL path to a Python function.\n\nFor example, @app.get(\"/items\") registers a function that handles GET requests to /items.\n\n## Dependency Injection\n\nFastAPI provides a dependency injection system through Depends().\n\nDependencies allow developers to share common logic, database connections, authentication checks, and other reusable components.\n\nFastAPI automatically resolves declared dependencies before calling the path operation function.\n\n## Async Support\n\nFastAPI supports both synchronous functions defined with def and asynchronous functions defined with async def."
+    ],
+    "sources": [
+      "fastapi/features.md::7",
+      "fastapi/tutorial/dependencies/index.md::0",
+      "fastapi/tutorial/dependencies/index.md::10",
+      "fastapi/tutorial/dependencies/index.md::12",
+      "fastapi/fastapi_basics.txt::0"
+    ],
+    "citation_validation": {
+      "valid": true,
+      "citations": [
+        "fastapi/features.md::7",
+        "fastapi/tutorial/dependencies/index.md::0",
+        "fastapi/tutorial/dependencies/index.md::10",
+        "fastapi/fastapi_basics.txt::0"
+      ],
+      "invalid": []
+    }
+  },
+  {
+    "id": "q4",
+    "question": "What is the difference between def and async def in FastAPI?",
+    "answer": "In FastAPI, `def` defines a synchronous function, while `async def` defines an asynchronous function (a coroutine). \n\n- Synchronous functions (`def`) are executed in a thread pool by FastAPI to avoid blocking the event loop. They are suitable for regular, blocking code.\n- Asynchronous functions (`async def`) are useful when working with awaitable I/O operations such as asynchronous database queries or network requests. They allow FastAPI to handle other requests while waiting for these operations to complete.\n\nFastAPI supports both and can mix them seamlessly, running asynchronous functions with `await` and executing synchronous functions in a thread pool to maintain performance and responsiveness [fastapi/fastapi_basics.txt::1], [fastapi/async.md::2].\n\nIf you are unsure which to use, the recommendation is to use normal `def` functions [fastapi/async.md::2].",
+    "faithfulness": 0.8571428571428571,
+    "contexts": [
+      "## Async Support\n\nFastAPI supports both synchronous functions defined with def and asynchronous functions defined with async def.\n\nAsync functions are useful when working with awaitable I/O operations such as asynchronous database queries or network requests.\n\nSynchronous path operation functions are executed in a thread pool to avoid blocking the event loop.",
+      "## To `async` or not to `async` { #to-async-or-not-to-async }\n\nAs dependencies will also be called by **FastAPI** (the same as your *path operation functions*), the same rules apply while defining your functions.\n\nYou can use `async def` or normal `def`.\n\nAnd you can declare dependencies with `async def` inside of normal `def` *path operation functions*, or `def` dependencies inside of `async def` *path operation functions*, etc.\n\nIt doesn't matter. **FastAPI** will know what to do.\n\n/// note\n\nIf you don't know, check the [Async: *\"In a hurry?\"*](../../async.md#in-a-hurry) section about `async` and `await` in the docs.\n\n///\n\n## Integrated with OpenAPI { #integrated-with-openapi }",
+      "---\n\nIf you just don't know, use normal `def`.\n\n---\n\n**Note**: You can mix `def` and `async def` in your *path operation functions* as much as you need and define each one using the best option for you. FastAPI will do the right thing with them.\n\nAnyway, in any of the cases above, FastAPI will still work asynchronously and be extremely fast.\n\nBut by following the steps above, it will be able to do some performance optimizations.\n\n## Technical Details { #technical-details }\n\nModern versions of Python have support for **\"asynchronous code\"** using something called **\"coroutines\"**, with **`async` and `await`** syntax.\n\nLet's see that phrase by parts in the sections below:\n\n* **Asynchronous Code**\n* **`async` and `await`**\n* **Coroutines**\n\n## Asynchronous Code { #asynchronous-code }",
+      "# FastAPI Basics\n\nFastAPI is a Python web framework for building APIs using standard Python type hints.\n\n## Path Operations\n\nA path operation connects an HTTP method and URL path to a Python function.\n\nFor example, @app.get(\"/items\") registers a function that handles GET requests to /items.\n\n## Dependency Injection\n\nFastAPI provides a dependency injection system through Depends().\n\nDependencies allow developers to share common logic, database connections, authentication checks, and other reusable components.\n\nFastAPI automatically resolves declared dependencies before calling the path operation function.\n\n## Async Support\n\nFastAPI supports both synchronous functions defined with def and asynchronous functions defined with async def.",
+      "This is in contrast to the functions that FastAPI calls for you: *path operation functions* and dependencies.\n\nIf your utility function is a normal function with `def`, it will be called directly (as you write it in your code), not in a threadpool, if the function is created with `async def` then you should `await` that function when you call it in your code.\n\n---\n\nAgain, these are very technical details that would probably be useful if you came searching for them.\n\nOtherwise, you should be good with the guidelines from the section above: <a href=\"#in-a-hurry\">In a hurry?</a>."
+    ],
+    "sources": [
+      "fastapi/fastapi_basics.txt::1",
+      "fastapi/tutorial/dependencies/index.md::8",
+      "fastapi/async.md::2",
+      "fastapi/fastapi_basics.txt::0",
+      "fastapi/async.md::36"
+    ],
+    "citation_validation": {
+      "valid": true,
+      "citations": [
+        "fastapi/fastapi_basics.txt::1",
+        "fastapi/async.md::2",
+        "fastapi/async.md::2"
+      ],
+      "invalid": []
+    }
+  },
+  {
+    "id": "q5",
+    "question": "How does FastAPI validate request bodies using Pydantic?",
+    "answer": "FastAPI validates request bodies by using Pydantic models. When you declare a request body in FastAPI, you define it using Pydantic models, which provide powerful data validation and parsing features. This means that the data sent by the client in the request body is automatically validated against the Pydantic model you specify.\n\nFor example, when a client sends data to your API (typically via methods like POST, PUT, DELETE, or PATCH), FastAPI uses the Pydantic model to parse and validate that data. If the data does not conform to the model, FastAPI will return an error response indicating what validation failed.\n\nAdditionally, FastAPI can handle request bodies in different formats. For instance, you can receive the raw request body as bytes and then parse it yourself (e.g., parsing YAML content), but still use the same Pydantic model to validate the parsed data.\n\nBecause FastAPI is built on top of Pydantic, it inherits all of Pydantic's features, including integration with ORMs and ODMs, allowing seamless validation and conversion between request data, database objects, and response data.\n\nIn summary, FastAPI leverages Pydantic models to automatically validate and parse request bodies, ensuring that the incoming data matches the expected schema before your endpoint logic processes it [fastapi/tutorial/body.md::0], [fastapi/advanced/path-operation-advanced-configuration.md::10], [fastapi/features.md::11].",
+    "faithfulness": 0.9333333333333333,
+    "contexts": [
+      "Then we use the request directly, and extract the body as `bytes`. This means that FastAPI won't even try to parse the request payload as JSON.\n\nAnd then in our code, we parse that YAML content directly, and then we are again using the same Pydantic model to validate the YAML content:\n\n{* ../../docs_src/path_operation_advanced_configuration/tutorial007_py310.py hl[24:31] *}\n\n/// tip\n\nHere we reuse the same Pydantic model.\n\nBut the same way, we could have validated it in some other way.\n\n///",
+      "Including external libraries also based on Pydantic, such as <abbr title=\"Object-Relational Mapper\">ORM</abbr>s and <abbr title=\"Object-Document Mapper\">ODM</abbr>s for databases.\n\nThis also means that in many cases you can pass the same object you get from a request **directly to the database**, as everything is validated automatically.\n\nThe same applies the other way around, in many cases you can just pass the object you get from the database **directly to the client**.\n\nWith **FastAPI** you get all of **Pydantic**'s features (as FastAPI is based on Pydantic for all the data handling):",
+      "# Request Body { #request-body }\n\nWhen you need to send data from a client (let's say, a browser) to your API, you send it as a **request body**.\n\nA **request** body is data sent by the client to your API. A **response** body is the data your API sends to the client.\n\nYour API almost always has to send a **response** body. But clients don't necessarily need to send **request bodies** all the time, sometimes they only request a path, maybe with some query parameters, but don't send a body.\n\nTo declare a **request** body, you use [Pydantic](https://pydantic.dev/docs/) models with all their power and benefits.\n\n/// note\n\nTo send data, you should use one of: `POST` (the most common), `PUT`, `DELETE` or `PATCH`.",
+      "# Using Dataclasses { #using-dataclasses }\n\nFastAPI is built on top of **Pydantic**, and I have been showing you how to use Pydantic models to declare requests and responses.\n\nBut FastAPI also supports using [`dataclasses`](https://docs.python.org/3/library/dataclasses.html) the same way:\n\n{* ../../docs_src/dataclasses_/tutorial001_py310.py hl[1,6:11,18:19] *}\n\nThis is still supported thanks to **Pydantic**, as it has [internal support for `dataclasses`](https://pydantic.dev/docs/validation/latest/concepts/dataclasses/#usage-of-stdlib-dataclasses-with-basemodel).\n\nSo, even with the code above that doesn't use Pydantic explicitly, FastAPI is using Pydantic to convert those standard dataclasses to Pydantic's own flavor of dataclasses.\n\nAnd of course, it supports the same:",
+      "Used by Pydantic:\n\n* [`email-validator`](https://github.com/JoshData/python-email-validator) - for email validation.\n\nUsed by Starlette:\n\n* [`httpx2`](https://pydantic.dev/docs/httpx2/) (or `httpx`) - Used by the `TestClient`.\n* [`jinja2`](https://jinja.palletsprojects.com) - Required if you want to use the default template configuration.\n* [`python-multipart`](https://github.com/Kludex/python-multipart) - Required if you want to support form <dfn title=\"converting the string that comes from an HTTP request into Python data\">\"parsing\"</dfn>, with `request.form()`.\n\nUsed by FastAPI:"
+    ],
+    "sources": [
+      "fastapi/advanced/path-operation-advanced-configuration.md::10",
+      "fastapi/features.md::11",
+      "fastapi/tutorial/body.md::0",
+      "fastapi/advanced/dataclasses.md::0",
+      "fastapi/index.md::42"
+    ],
+    "citation_validation": {
+      "valid": true,
+      "citations": [
+        "fastapi/tutorial/body.md::0",
+        "fastapi/advanced/path-operation-advanced-configuration.md::10",
+        "fastapi/features.md::11"
+      ],
+      "invalid": []
+    }
+  },
+  {
+    "id": "q2",
+    "question": "How do I implement OAuth2 authentication in FastAPI?",
+    "answer": "To implement OAuth2 authentication in FastAPI, you typically use the `OAuth2PasswordBearer` class provided by FastAPI. Here's a summary of the steps and concepts involved:\n\n1. Use the `OAuth2PasswordBearer` class to define the security scheme. When creating an instance, you pass the `tokenUrl` parameter, which is the URL where the client will send the username and password to obtain a token. For example:\n   ```python\n   oauth2_scheme = OAuth2PasswordBearer(tokenUrl=\"token\")\n   ```\n   Here, `\"token\"` is a relative URL endpoint you will create to handle token generation [fastapi/tutorial/security/first-steps.md::7].\n\n2. The `OAuth2PasswordBearer` class works by looking for an `Authorization` header in incoming requests. It expects the header to contain a \"Bearer\" token and extracts the token string for use in your application [fastapi/tutorial/security/first-steps.md::12].\n\n3. You then create an endpoint (e.g., `/token`) that accepts username and password, verifies them, and returns a token. This token is then used by clients to authenticate subsequent requests.\n\n4. FastAPI integrates this security scheme into the OpenAPI documentation automatically because `OAuth2PasswordBearer` inherits from FastAPI's security base classes [fastapi/tutorial/security/first-steps.md::12].\n\n5. For more fine-grained permissions, you can use OAuth2 scopes, which allow you to specify different levels of access and permissions in your OAuth2 implementation. FastAPI supports OAuth2 scopes seamlessly, enabling you to manage authentication and authorization with scopes [fastapi/advanced/security/oauth2-scopes.md::0].\n\nIn summary, you define an `OAuth2PasswordBearer` dependency with a token URL, implement the token endpoint to authenticate users and issue tokens, and then use the token in protected endpoints to secure your API. OAuth2 scopes can be added for more detailed permission control.\n\nThis approach follows the OAuth2 password flow and bearer token usage, which is common and recommended for many use cases [fastapi/tutorial/security/first-steps.md::4][fastapi/tutorial/security/first-steps.md::7].",
+    "faithfulness": 0.75,
+    "contexts": [
+      "# OAuth2 scopes { #oauth2-scopes }\n\nYou can use OAuth2 scopes directly with **FastAPI**, they are integrated to work seamlessly.\n\nThis would allow you to have a more fine-grained permission system, following the OAuth2 standard, integrated into your OpenAPI application (and the API docs).\n\nOAuth2 with scopes is the mechanism used by many big authentication providers, like Facebook, Google, GitHub, Microsoft, X (Twitter), etc. They use it to provide specific permissions to users and applications.\n\nEvery time you \"log in with\" Facebook, Google, GitHub, Microsoft, X (Twitter), that application is using OAuth2 with scopes.\n\nIn this section you will see how to manage authentication and authorization with the same OAuth2 with scopes in your **FastAPI** application.\n\n/// warning",
+      "## **FastAPI**'s `OAuth2PasswordBearer` { #fastapis-oauth2passwordbearer }\n\n**FastAPI** provides several tools, at different levels of abstraction, to implement these security features.\n\nIn this example we are going to use **OAuth2**, with the **Password** flow, using a **Bearer** token. We do that using the `OAuth2PasswordBearer` class.\n\n/// note\n\nA \"bearer\" token is not the only option.\n\nBut it's the best one for our use case.\n\nAnd it might be the best for most use cases, unless you are an OAuth2 expert and know exactly why there's another option that better suits your needs.\n\nIn that case, **FastAPI** also provides you with the tools to build it.\n\n///",
+      "In that case, **FastAPI** also provides you with the tools to build it.\n\n///\n\nWhen we create an instance of the `OAuth2PasswordBearer` class we pass in the `tokenUrl` parameter. This parameter contains the URL that the client (the frontend running in the user's browser) will use to send the `username` and `password` in order to get a token.\n\n{* ../../docs_src/security/tutorial001_an_py310.py hl[8] *}\n\n/// tip\n\nHere `tokenUrl=\"token\"` refers to a relative URL `token` that we haven't created yet. As it's a relative URL, it's equivalent to `./token`.",
+      "The `password` \"flow\" is one of the ways (\"flows\") defined in OAuth2, to handle security and authentication.\n\nOAuth2 was designed so that the backend or API could be independent of the server that authenticates the user.\n\nBut in this case, the same **FastAPI** application will handle the API and the authentication.\n\nSo, let's review it from that simplified point of view:",
+      "/// note | Technical Details\n\n**FastAPI** will know that it can use the class `OAuth2PasswordBearer` (declared in a dependency) to define the security scheme in OpenAPI because it inherits from `fastapi.security.oauth2.OAuth2`, which in turn inherits from `fastapi.security.base.SecurityBase`.\n\nAll the security utilities that integrate with OpenAPI (and the automatic API docs) inherit from `SecurityBase`, that's how **FastAPI** can know how to integrate them in OpenAPI.\n\n///\n\n## What it does { #what-it-does }\n\nIt will go and look in the request for that `Authorization` header, check if the value is `Bearer ` plus some token, and will return the token as a `str`."
+    ],
+    "sources": [
+      "fastapi/advanced/security/oauth2-scopes.md::0",
+      "fastapi/tutorial/security/first-steps.md::7",
+      "fastapi/tutorial/security/first-steps.md::8",
+      "fastapi/tutorial/security/first-steps.md::4",
+      "fastapi/tutorial/security/first-steps.md::12"
+    ],
+    "citation_validation": {
+      "valid": true,
+      "citations": [
+        "fastapi/tutorial/security/first-steps.md::7",
+        "fastapi/tutorial/security/first-steps.md::12",
+        "fastapi/tutorial/security/first-steps.md::12",
+        "fastapi/advanced/security/oauth2-scopes.md::0",
+        "fastapi/tutorial/security/first-steps.md::4",
+        "fastapi/tutorial/security/first-steps.md::7"
+      ],
+      "invalid": []
+    }
+  },
+  {
+    "id": "q3",
+    "question": "How can I upload files using FastAPI?",
+    "answer": "You can upload files in FastAPI by defining parameters in your path operation functions as type `UploadFile`. This allows you to receive files from the request.\n\nTo do this, first import `UploadFile` from `fastapi`:\n\n```python\nfrom fastapi import UploadFile\n```\n\nThen, in your path operation function, declare parameters with the type `UploadFile` to receive uploaded files.\n\nFor example, inside an async path operation function, you can read the contents of the uploaded file asynchronously:\n\n```python\ncontents = await myfile.read()\n```\n\nIf your path operation function is a normal (non-async) function, you can access the file contents directly:\n\n```python\ncontents = myfile.file.read()\n```\n\nNote that to receive uploaded files, you need to have the `python-multipart` package installed because files are sent as form data.\n\nAlso, you can use `File` and `Form` together when you need to receive both files and form data in the same request.\n\nIn summary, use `UploadFile` parameters in your path operation functions to handle file uploads in FastAPI.\n\nAll these details are from the FastAPI documentation on `UploadFile` and request files handling [fastapi/reference/uploadfile.md::0], [fastapi/tutorial/request-files.md::0], [fastapi/tutorial/request-files.md::6], and [fastapi/tutorial/request-forms-and-files.md::1].",
+    "faithfulness": 0.8,
+    "contexts": [
+      "# `UploadFile` class\n\nYou can define *path operation function* parameters to be of the type `UploadFile` to receive files from the request.\n\nYou can import it directly from `fastapi`:\n\n```python\nfrom fastapi import UploadFile\n```\n\n::: fastapi.UploadFile\n    options:\n        members:\n            - file\n            - filename\n            - size\n            - headers\n            - content_type\n            - read\n            - write\n            - seek\n            - close",
+      "{* ../../docs_src/request_forms_and_files/tutorial001_an_py310.py hl[10:12] *}\n\nThe files and form fields will be uploaded as form data and you will receive the files and form fields.\n\nAnd you can declare some of the files as `bytes` and some as `UploadFile`.\n\n/// warning\n\nYou can declare multiple `File` and `Form` parameters in a *path operation*, but you can't also declare `Body` fields that you expect to receive as JSON, as the request will have the body encoded using `multipart/form-data` instead of `application/json`.\n\nThis is not a limitation of **FastAPI**, it's part of the HTTP protocol.\n\n///\n\n## Recap { #recap }\n\nUse `File` and `Form` together when you need to receive data and files in the same request.",
+      "# Request Files { #request-files }\n\nYou can define files to be uploaded by the client using `File`.\n\n/// note\n\nTo receive uploaded files, first install [`python-multipart`](https://github.com/Kludex/python-multipart).\n\nAdd it to your project:\n\n```console\n$ uv add python-multipart\n```\n\nThis is because uploaded files are sent as \"form data\".\n\n///\n\n## Import `File` { #import-file }\n\nImport `File` and `UploadFile` from `fastapi`:\n\n{* ../../docs_src/request_files/tutorial001_an_py310.py hl[3] *}\n\n## Define `File` Parameters { #define-file-parameters }\n\nCreate file parameters the same way you would for `Body` or `Form`:\n\n{* ../../docs_src/request_files/tutorial001_an_py310.py hl[9] *}\n\n/// note\n\n`File` is a class that inherits directly from `Form`.",
+      "---\n\n**Documentation**: [https://fastapi.tiangolo.com](https://fastapi.tiangolo.com)\n\n**Source Code**: [https://github.com/fastapi/fastapi](https://github.com/fastapi/fastapi)\n\n---\n\nFastAPI is a modern, fast (high-performance), web framework for building APIs with Python based on standard Python type hints.\n\nThe key features are:",
+      "For example, inside of an `async` *path operation function* you can get the contents with:\n\n```Python\ncontents = await myfile.read()\n```\n\nIf you are inside of a normal `def` *path operation function*, you can access the `UploadFile.file` directly, for example:\n\n```Python\ncontents = myfile.file.read()\n```\n\n/// note | `async` Technical Details\n\nWhen you use the `async` methods, **FastAPI** runs the file methods in a threadpool and awaits for them.\n\n///\n\n/// note | Starlette Technical Details\n\n**FastAPI**'s `UploadFile` inherits directly from **Starlette**'s `UploadFile`, but adds some necessary parts to make it compatible with **Pydantic** and the other parts of FastAPI.\n\n///\n\n## What is \"Form Data\" { #what-is-form-data }"
+    ],
+    "sources": [
+      "fastapi/reference/uploadfile.md::0",
+      "fastapi/tutorial/request-forms-and-files.md::1",
+      "fastapi/tutorial/request-files.md::0",
+      "fastapi/index.md::3",
+      "fastapi/tutorial/request-files.md::6"
+    ],
+    "citation_validation": {
+      "valid": true,
+      "citations": [
+        "fastapi/reference/uploadfile.md::0",
+        "fastapi/tutorial/request-files.md::0",
+        "fastapi/tutorial/request-files.md::6",
+        "fastapi/tutorial/request-forms-and-files.md::1"
+      ],
+      "invalid": []
+    }
+  }
+]

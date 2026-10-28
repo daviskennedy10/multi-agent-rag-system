@@ -6,20 +6,27 @@ from app.rag.retriever import retrieve
 
 from app.rag.vector_store import openai_client
 
+from app.rag.citations import validate_citations
 
-def generate_answer(question: str) -> str:
+
+def generate_with_context(question: str) -> dict:
     # STEP 1: RETRIEVAL
-    # Search Chroma for the 5 most relevant document chunks.
+    # Find the 5 closest documentation chunks.
     chunks = retrieve(question, k=5)
 
-    # If our database is empty, we cannot generate
-    # an answer grounded in documentation.
+    # Handle cases where the database contains no chunks.
     if not chunks:
-        return "I couldnt find relevant information in the available documentation."
+        return {
+            "question": question,
+            "answer": "I couldn't find relevant documentation.",
+            "contexts": [],
+            "chunks": [],
+            "citation_validation": None,
+        }
 
     # STEP 2: AUGMENTATION
-    # Combine retrieved chunks into one context string.
-    # Include chunk IDs and filenames so the LLM can cite them.
+    # Build the context that will be sent to the LLM.
+    # Each chunk includes its ID, source, and original text.
     context = "\n\n".join(
         f"[{chunk['id']}]\n"
         f"Source: {chunk['source']}\n"
@@ -27,36 +34,30 @@ def generate_answer(question: str) -> str:
         for chunk in chunks
     )
 
-    # Define the rules that control the LLM's behavior.
-    # These instructions help reduce hallucinations.
+    # Tell the LLM to answer using retrieved evidence only.
     system_prompt = """
 You are a developer documentation assistant.
 
 Answer questions using ONLY the supplied documentation.
 
 Rules:
-1. Ground every factual claim in the provided context.
-2. Cite the source chunk IDs, e.g. [fastapi_basics_0].
-3. If the documentation does not contain the answer,
+1. Ground factual claims in the retrieved documentation.
+2. Cite the exact chunk IDs provided in the context.
+3. Each citation must use this format:
+   [fastapi/tutorial/request-files.md::0]
+4. Never combine multiple chunk IDs into one citation.
+5. Never invent chunk IDs or cite documents not provided.
+6. If the documentation does not support an answer,
    explicitly say so.
-4. Never invent citations.
-5. Explain technical concepts clearly and concisely.
+7. Explain technical concepts clearly and concisely.
 """
 
     # STEP 3: GENERATION
-    # Send the instructions, retrieved documentation,
-    # and user's question to the OpenAI model.
+    # Send the retrieved context and question to OpenAI.
     response = openai_client.chat.completions.create(
-        # Use OPENAI_MODEL from .env if available.
-        # Otherwise, use gpt-4.1-mini as our prototype model.
         model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-
         messages=[
-            # System message defines the assistant's behavior.
             {"role": "system", "content": system_prompt},
-
-            # User message contains the retrieved documentation
-            # alongside the actual question.
             {
                 "role": "user",
                 "content": (
@@ -65,17 +66,40 @@ Rules:
                 ),
             },
         ],
-
-        # Temperature 0 requests less randomness.
-        # It does not guarantee a correct or identical answer.
         temperature=0,
     )
 
-    # Extract the generated text from the API response.
-    # Return an empty string if the response has no text.
-    return response.choices[0].message.content or ""
+    # Extract the answer from the API response.
+    answer = response.choices[0].message.content or ""
+
+    # STEP 4: CITATION VALIDATION
+    # Verify that detected citation IDs belong to retrieved chunks.
+    validation = validate_citations(answer, chunks)
+
+    # Preserve the raw answer for evaluation, even if citations
+    # are invalid. This helps us investigate generation failures.
+    return {
+        "question": question,
+        "answer": answer,
+        "contexts": [chunk["text"] for chunk in chunks],
+        "chunks": chunks,
+        "citation_validation": validation,
+    }
 
 
+def generate_answer(question: str) -> str:
+    # Reuse our new function instead of duplicating logic.
+    result = generate_with_context(question)
+
+    # Reject responses containing detected invalid citations.
+    if (
+        result["citation_validation"] is not None
+        and not result["citation_validation"]["valid"]
+    ):
+        return "The generated answer contained invalid citations."
+
+    # Return only the answer for normal application usage.
+    return result["answer"]
 
 if __name__ == "__main__":
     # Test generation across three different FastAPI topics.

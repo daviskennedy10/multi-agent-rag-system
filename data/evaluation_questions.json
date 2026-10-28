@@ -1,0 +1,23 @@
+
+[
+  {
+    "id": "q1",
+    "question": "How does dependency injection work in FastAPI?"
+  },
+  {
+    "id": "q2",
+    "question": "How do I implement OAuth2 authentication in FastAPI?"
+  },
+  {
+    "id": "q3",
+    "question": "How can I upload files using FastAPI?"
+  },
+  {
+    "id": "q4",
+    "question": "What is the difference between def and async def in FastAPI?"
+  },
+  {
+    "id": "q5",
+    "question": "How does FastAPI validate request bodies using Pydantic?"
+  }
+]
