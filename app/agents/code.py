@@ -7,8 +7,7 @@ from app.agents.code_tools import analyze_python_code
 # Import the shared LangGraph state.
 from app.agents.state import AgentState
 
-# Reuse our configured OpenAI client.
-from app.rag.vector_store import openai_client
+from app.agents.llm_providers import generate_routed
 
 # Import both code extraction and AST analysis tools.
 from app.agents.code_tools import (
@@ -45,31 +44,38 @@ Your responsibilities:
 6. If no Python code is supplied, explain what is missing.
 """
 
-        # Ask the LLM to interpret the code and AST findings.
-        response = openai_client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": (
-                        f"User input:\n{question}\n\n"
-                        f"AST analysis:\n{analysis}"
-                    ),
-                },
-            ],
-            temperature=0,
+        
+        # Combine the Code Agent's instructions with its task context.
+        prompt = (
+            f"{system_prompt}\n\n"
+            f"User input:\n{question}\n\n"
+            f"AST analysis:\n{analysis}"
         )
 
-        # Extract the generated code explanation.
-        answer = response.choices[0].message.content or ""
+        # Select an LLM provider and generate the code analysis.
+        result = generate_routed(
+            question=question,
+            agent="code",
+            prompt=prompt,
+        )
 
-        # Return the answer and execution trace to LangGraph.
+        # Extract the generated answer and actual routing decision.
+        answer = result["answer"]
+        routing = result["routing"]
+
+
+        # Return the analysis and inspectable provider information.
         return {
             "answer": answer,
+            "routing": routing,
             "trace": state["trace"] + [
                 "Code agent executed",
                 "AST analysis completed",
+                (
+                    f"LLM: {routing['provider']} / "
+                    f"{routing['model']}"
+                ),
+                f"Routing reason: {routing['reason']}",
             ],
         }
 

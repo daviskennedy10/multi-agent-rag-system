@@ -18,3 +18,6 @@ class AgentState(TypedDict):
 
     # Records which nodes executed, for debugging.
     trace: list[str]
+
+    # Record the actual LLM provider, model, and routing rationale.
+    routing: dict
