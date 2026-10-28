@@ -8,8 +8,15 @@ from app.rag.vector_store import openai_client
 
 from app.rag.citations import validate_citations
 
+from app.rag.multi_retriever import multi_retrieve
 
-def generate_with_context(question: str) -> dict:
+
+def generate_with_context(question: str, use_multi_query: bool = False,) -> dict:
+    # Choose a retrieval strategy based on the requested mode.
+    if use_multi_query:
+        chunks = multi_retrieve(question, k=5)
+    else:
+        chunks = retrieve(question, k=5)
     # STEP 1: RETRIEVAL
     # Find the 5 closest documentation chunks.
     chunks = retrieve(question, k=5)

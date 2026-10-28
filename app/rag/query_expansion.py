@@ -12,10 +12,15 @@ def expand_query(question: str) -> list[str]:
             {
                 "role": "system",
                 "content": (
-                    "Generate exactly 3 distinct search queries "
-                    "that would help retrieve documentation needed "
-                    "to answer the user's question. "
-                    "Return only the queries, one per line."
+                    "You are a technical documentation search planner. "
+                    "Generate exactly 3 distinct search queries that help "
+                    "answer the user's question comprehensively. "
+                    "Each query must target a DIFFERENT technical subtopic "
+                    "or implementation step. "
+                    "Prefer concrete APIs, configuration steps, code examples, "
+                    "and implementation details over broad topic summaries. "
+                    "Do not repeat the original question or produce synonyms. "
+                    "Return only the three queries, one per line."
                 ),
             },
             {
