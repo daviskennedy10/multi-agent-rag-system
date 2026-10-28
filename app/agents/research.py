@@ -14,22 +14,30 @@ def research_agent(state: AgentState) -> dict:
         # Run retrieval, augmentation, and generation.
         result = generate_with_context(question)
 
+        # Extract the provider that generated the RAG answer.
+        routing = result["routing"]
+
         # Check whether the answer contains invalid citations.
         validation = result["citation_validation"]
 
         if validation is not None and not validation["valid"]:
             raise ValueError("Generated answer contains invalid citations")
 
-        # Return state updates to LangGraph.
+        # Return the grounded answer and provider details.
         return {
             "answer": result["answer"],
+            "routing": routing,
             "trace": state["trace"] + [
                 "Research agent executed RAG",
                 f"Retrieved {len(result['chunks'])} chunks",
+                f"LLM: {routing['provider']} / {routing['model']}",
+                f"Routing reason: {routing['reason']}",
             ],
         }
 
     except Exception as error:
+        import traceback
+        traceback.print_exc()
         # Handle errors without crashing the entire graph.
         return {
             "answer": "Research agent couldn't complete the request.",

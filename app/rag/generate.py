@@ -4,7 +4,7 @@ import os
 from app.rag.retriever import retrieve
 
 
-from app.rag.vector_store import openai_client
+from app.agents.llm_providers import generate_routed
 
 from app.rag.citations import validate_citations
 
@@ -17,9 +17,6 @@ def generate_with_context(question: str, use_multi_query: bool = False,) -> dict
         chunks = multi_retrieve(question, k=5)
     else:
         chunks = retrieve(question, k=5)
-    # STEP 1: RETRIEVAL
-    # Find the 5 closest documentation chunks.
-    chunks = retrieve(question, k=5)
 
     # Handle cases where the database contains no chunks.
     if not chunks:
@@ -59,25 +56,25 @@ Rules:
 7. Explain technical concepts clearly and concisely.
 """
 
-    # STEP 3: GENERATION
-    # Send the retrieved context and question to OpenAI.
-    response = openai_client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": (
-                    f"Documentation:\n{context}\n\n"
-                    f"Question: {question}"
-                ),
-            },
-        ],
-        temperature=0,
+    
+    # Build the complete RAG prompt using retrieved documentation.
+    prompt = (
+        f"{system_prompt}\n\n"
+        f"Documentation:\n{context}\n\n"
+        f"Question: {question}"
     )
 
-    # Extract the answer from the API response.
-    answer = response.choices[0].message.content or ""
+    # Select an LLM provider based on question complexity.
+    result = generate_routed(
+        question=question,
+        agent="research",
+        prompt=prompt,
+    )
+
+    # Extract the answer and actual provider-routing decision.
+    answer = result["answer"]
+    routing = result["routing"]
+
 
     # STEP 4: CITATION VALIDATION
     # Verify that detected citation IDs belong to retrieved chunks.
@@ -91,6 +88,7 @@ Rules:
         "contexts": [chunk["text"] for chunk in chunks],
         "chunks": chunks,
         "citation_validation": validation,
+        "routing": routing,
     }
 
 

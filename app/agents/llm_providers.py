@@ -45,7 +45,7 @@ def generate_with_gemini(prompt: str) -> str:
             model=os.environ["GEMINI_MODEL"],
             contents=prompt,
             config={
-                "max_output_tokens": 150,
+                "max_output_tokens": 1024,
                 "thinking_config": {
                     "thinking_budget": 0,
                 },
