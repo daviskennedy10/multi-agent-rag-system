@@ -15,6 +15,9 @@ from collections.abc import Iterator
 # Gemini SDK configuration objects.
 from google.genai import types
 
+# Identify Google API failures by their status code.
+from google.genai.errors import APIError
+
 # Load API keys and model settings from .env.
 load_dotenv()
 
@@ -24,43 +27,82 @@ gemini_client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
 
 
+
 def stream_routed(
     question: str,
     agent: str,
     prompt: str,
 ) -> Iterator[dict]:
-    # Select the provider using our existing routing policy.
+    # Select the preferred provider using our existing router.
     decision = route_llm(question, agent)
 
-    # Tell the caller which provider was selected.
-    yield {
-        "type": "routing",
-        "data": decision,
-    }
+    # Track whether any answer text has already been emitted.
+    emitted_text = False
 
-    # Stream text from Gemini when Google is selected.
     if decision["provider"] == "google":
-        stream = gemini_client.models.generate_content_stream(
-            model=decision["model"],
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                max_output_tokens=2048,
-                thinking_config=types.ThinkingConfig(
-                    thinking_budget=0,
+        try:
+            # Start streaming from Gemini.
+            stream = gemini_client.models.generate_content_stream(
+                model=decision["model"],
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    max_output_tokens=2048,
+                    thinking_config=types.ThinkingConfig(
+                        thinking_budget=0,
+                    ),
                 ),
-            ),
-        )
+            )
 
-        # Forward each Gemini text chunk as it arrives.
-        for chunk in stream:
-            if chunk.text:
-                yield {
-                    "type": "token",
-                    "data": chunk.text,
-                }
+            for chunk in stream:
+                if chunk.text:
+                    emitted_text = True
+
+                    # Forward genuine Gemini tokens.
+                    yield {
+                        "type": "token",
+                        "data": chunk.text,
+                    }
+
+        except APIError as error:
+            # Only fail over for quota or temporary server errors.
+            if error.code not in (429, 503) or emitted_text:
+                raise
+
+            # Record the actual provider used after fallback.
+            decision = {
+                "provider": "openai",
+                "model": os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+                "reason": (
+                    f"Fallback after Gemini HTTP {error.code}"
+                ),
+            }
+
+            # Notify the UI about the provider change.
+            yield {
+                "type": "routing",
+                "data": decision,
+            }
+
+            # Stream the same prompt using OpenAI instead.
+            stream = openai_client.chat.completions.create(
+                model=decision["model"],
+                messages=[
+                    {"role": "user", "content": prompt},
+                ],
+                stream=True,
+            )
+
+            for chunk in stream:
+                token = chunk.choices[0].delta.content
+
+                if token:
+                    yield {
+                        "type": "token",
+                        "data": token,
+                    }
 
     else:
-        # Stream text from OpenAI when OpenAI is selected.
+        # OpenAI was selected directly by our routing policy.
         stream = openai_client.chat.completions.create(
             model=decision["model"],
             messages=[
@@ -69,7 +111,6 @@ def stream_routed(
             stream=True,
         )
 
-        # Forward each OpenAI text delta as it arrives.
         for chunk in stream:
             token = chunk.choices[0].delta.content
 
@@ -79,12 +120,11 @@ def stream_routed(
                     "data": token,
                 }
 
-    # Signal that model generation has completed.
+    # Report the provider that actually completed generation.
     yield {
         "type": "complete",
         "data": decision,
     }
-
 
 def generate_with_openai(prompt: str) -> str:
     # Send the prompt to OpenAI.

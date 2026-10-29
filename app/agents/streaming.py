@@ -38,6 +38,9 @@ def generate_streamed(
                 "type": "token",
                 "data": token,
             })
+        # Update the final provider decision after successful generation.
+        elif event["type"] == "complete":
+            routing = event["data"]
 
     # Return the completed answer and routing information.
     return {

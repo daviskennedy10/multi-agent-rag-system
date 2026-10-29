@@ -2,218 +2,476 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Developer Documentation Assistant</title>
 
-    <title>Developer Documentation Assistant</title>
+  <!-- Markdown rendering and HTML sanitization. -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 
-    <style>
-        /* Basic layout and typography. */
-        body {
-            font-family: system-ui, sans-serif;
-            max-width: 850px;
-            margin: 40px auto;
-            padding: 20px;
-            background: #f8fafc;
-        }
+  <style>
+    /* Shared colors and layout settings. */
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --border: #e2e8f0;
+      --text: #172033;
+      --muted: #64748b;
+      --accent: #2563eb;
+    }
 
-        /* Display messages inside a scrollable chat area. */
-        #messages {
-            height: 400px;
-            overflow-y: auto;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 20px;
-            white-space: pre-wrap;
-        }
+    * { box-sizing: border-box; }
 
-        /* Separate individual chat messages. */
-        .message {
-            margin-bottom: 20px;
-        }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
 
-        /* Distinguish user messages from assistant responses. */
-        .user {
-            color: #2563eb;
-        }
+    /* Main dashboard container. */
+    .app {
+      max-width: 1400px;
+      margin: auto;
+      padding: 24px;
+    }
 
-        /* Arrange the input and send button horizontally. */
-        form {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
 
-        input {
-            flex: 1;
-            padding: 12px;
-        }
+    h1 { font-size: 24px; margin: 0; }
+    header p { color: var(--muted); margin: 6px 0; }
 
-        button {
-            padding: 12px 20px;
-            cursor: pointer;
-        }
+    .status {
+      color: #15803d;
+      background: #dcfce7;
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+    }
 
-        /* Display execution information separately. */
-        #trace {
-            margin-top: 20px;
-            padding: 15px;
-            background: #e2e8f0;
-            border-radius: 8px;
-            white-space: pre-wrap;
-        }
-    </style>
+    /* Chat occupies more space than the activity panel. */
+    .dashboard {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+      gap: 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .panel-title {
+      padding: 18px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Scrollable conversation area. */
+    #messages {
+      height: 60vh;
+      min-height: 350px;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .message {
+      margin-bottom: 20px;
+      padding: 14px;
+      border-radius: 10px;
+      overflow-wrap: anywhere;
+    }
+
+    .user {
+      background: #eff6ff;
+      margin-left: 15%;
+    }
+
+    .assistant {
+      background: #f8fafc;
+      margin-right: 5%;
+    }
+
+    .role {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    /* Preserve readable code examples. */
+    pre {
+      background: #172033;
+      color: #f8fafc;
+      padding: 14px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    code { font-family: ui-monospace, monospace; }
+    p, li { line-height: 1.6; }
+
+    /* Question input stays below the conversation. */
+    form {
+      display: flex;
+      gap: 10px;
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      padding: 12px 20px;
+      cursor: pointer;
+    }
+
+    button:disabled { opacity: .5; cursor: wait; }
+
+    /* Execution details appear in the right panel. */
+    .activity-body { padding: 18px; }
+
+    .field { margin-bottom: 20px; }
+
+    .field-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .field-value { font-size: 14px; overflow-wrap: anywhere; }
+
+    #timeline {
+      padding-left: 20px;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    #timeline li { overflow-wrap: anywhere; }
+
+    .warning { color: #b45309; }
+
+    /* Stack panels on smaller screens. */
+    @media (max-width: 800px) {
+      .dashboard { grid-template-columns: 1fr; }
+      #messages { height: 50vh; }
+    }
+
+    /* Make source citations identifiable and clickable. */
+    .assistant a {
+    color: #2563eb;
+    text-decoration: none;
+    border-bottom: 1px dotted #2563eb;
+    }
+
+    .assistant a:hover {
+    text-decoration: underline;
+    }
+  </style>
 </head>
 
 <body>
-    <h1>Developer Documentation Assistant</h1>
-    <p>Ask questions about Python, FastAPI, and developer documentation.</p>
+<div class="app">
 
-    <!-- Display the conversation here. -->
-    <div id="messages" aria-live="polite"></div>
+  <header>
+    <div>
+      <h1>Developer Documentation Assistant</h1>
+      <p>Multi-agent research, code analysis, and documentation summaries</p>
+    </div>
+    <span class="status">● Online</span>
+  </header>
 
-    <!-- Collect and submit user questions. -->
-    <form id="chat-form">
-        <input
-            id="question"
-            type="text"
-            placeholder="Ask a developer question..."
-            required
-        >
+  <main class="dashboard">
+
+    <!-- Left panel: conversation and input. -->
+    <section class="panel">
+      <div class="panel-title">Chat Workspace</div>
+
+      <div id="messages" aria-live="polite"></div>
+
+      <form id="chat-form">
+        <input id="question"
+               placeholder="Ask about FastAPI, Python, or code..."
+               required>
         <button id="send-button" type="submit">Send</button>
-    </form>
+      </form>
+    </section>
 
-    <!-- Show agent execution and routing details. -->
-    <div id="trace">Agent trace will appear here.</div>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Remove potentially dangerous HTML and attributes. -->
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+    <!-- Right panel: inspectable agent execution. -->
+    <aside class="panel">
+      <div class="panel-title">Agent Activity</div>
+
+      <div class="activity-body">
+        <div class="field">
+          <div class="field-label">Status</div>
+          <div class="field-value" id="run-status">Ready</div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">LLM Provider</div>
+          <div class="field-value" id="provider">—</div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Model</div>
+          <div class="field-value" id="model">—</div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Routing Reason</div>
+          <div class="field-value" id="reason">—</div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Execution Timeline</div>
+          <ol id="timeline"></ol>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+</div>
+
+<script>
+  // Get references to our dashboard elements.
+  const form = document.getElementById("chat-form");
+  const input = document.getElementById("question");
+  const messages = document.getElementById("messages");
+  const sendButton = document.getElementById("send-button");
+
+  const statusEl = document.getElementById("run-status");
+  const providerEl = document.getElementById("provider");
+  const modelEl = document.getElementById("model");
+  const reasonEl = document.getElementById("reason");
+  const timeline = document.getElementById("timeline");
+
+  // Create a chat bubble and return its content element.
+  function addMessage(role, text = "") {
+    const bubble = document.createElement("div");
+    bubble.className = `message ${role}`;
+
+    const label = document.createElement("div");
+    label.className = "role";
+    label.textContent = role === "user" ? "You" : "Assistant";
+
+    const content = document.createElement("div");
+    content.textContent = text;
+
+    bubble.append(label, content);
+    messages.appendChild(bubble);
+    messages.scrollTop = messages.scrollHeight;
+
+    return content;
+  }
+
+  // Add one execution event to the activity timeline.
+  function addTimelineEvent(message) {
+    const item = document.createElement("li");
+    item.textContent = message;
+    timeline.appendChild(item);
+  }
+
+  // Update provider details when routing information arrives.
+  function showRouting(routing) {
+    if (!routing) return;
+
+    providerEl.textContent = routing.provider || "—";
+    modelEl.textContent = routing.model || "—";
+    reasonEl.textContent = routing.reason || "—";
+  }
+
+  
+  function linkCitations(markdown) {
+    // Match exact FastAPI chunk IDs inside square brackets.
+    const pattern = /\[(fastapi\/[^\]\s,]+\.md::\d+)\]/g;
+
+    return markdown.replace(pattern, (citation, chunkId) => {
+        // Remove the chunk number to obtain the documentation path.
+        const path = chunkId.split("::")[0];
+
+        // Remove the "fastapi/" prefix and ".md" extension.
+        const page = path
+        .replace(/^fastapi\//, "")
+        .replace(/\.md$/, "");
+
+        // Build a link to FastAPI's official documentation.
+        const url = `https://fastapi.tiangolo.com/${page}/`;
+
+        // Keep the original chunk ID visible as the citation label.
+        return `[${chunkId}](${url})`;
+    });
+  }
 
 
-    <script>
-        // Find the elements we need to update.
-        const form = document.getElementById("chat-form");
-        const input = document.getElementById("question");
-        const messages = document.getElementById("messages");
-        const trace = document.getElementById("trace");
-        const sendButton = document.getElementById("send-button");
+  // Handle user questions.
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-        // Handle a new user question.
-        form.addEventListener("submit", async (event) => {
-            event.preventDefault();
+    const question = input.value.trim();
+    if (!question) return;
 
-            // Read the question and prevent duplicate submissions.
-            const question = input.value.trim();
-            if (!question) return;
+    // Reset dashboard state for this request.
+    sendButton.disabled = true;
+    input.value = "";
+    timeline.replaceChildren();
 
-            sendButton.disabled = true;
-            input.value = "";
+    statusEl.textContent = "Processing...";
+    providerEl.textContent = "—";
+    modelEl.textContent = "—";
+    reasonEl.textContent = "—";
 
-            // Display the user's message safely as plain text.
-            const userMessage = document.createElement("div");
-            userMessage.className = "message user";
-            userMessage.textContent = "You: " + question;
-            messages.appendChild(userMessage);
+    addMessage("user", question);
+    const answerEl = addMessage("assistant");
 
-            // Create an empty assistant response to fill progressively.
-            const assistantMessage = document.createElement("div");
-            assistantMessage.className = "message";
-            assistantMessage.textContent = "Assistant: ";
-            messages.appendChild(assistantMessage);
+    // Preserve raw Markdown while streaming.
+    let markdownBuffer = "";
+    let streamError = false;
+    let receivedDone = false;
 
-            trace.textContent = "Processing...";
+    try {
+      // POST supports longer questions and code snippets.
+      const response = await fetch("/chat/stream", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({question}),
+      });
 
-            // Preserve generated Markdown while tokens arrive.
-            let markdownBuffer = "";
+      if (!response.ok || !response.body) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
-            try {
-                // Send the question to our FastAPI SSE endpoint.
-                const response = await fetch("/chat/stream", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({question}),
-                });
+      // Read SSE data incrementally as it arrives.
+      const reader = response.body
+        .pipeThrough(new TextDecoderStream())
+        .getReader();
 
-                // Reject unsuccessful HTTP responses.
-                if (!response.ok || !response.body) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
+      let buffer = "";
 
-                // Decode incoming bytes into text.
-                const reader = response.body
-                    .pipeThrough(new TextDecoderStream())
-                    .getReader();
+      function processEvent(rawEvent) {
+        const lines = rawEvent.split("\n");
 
-                let buffer = "";
+        const eventLine = lines.find(
+          line => line.startsWith("event:")
+        );
 
-                // Process each complete SSE message.
-                function processEvent(rawEvent) {
-                    const lines = rawEvent.split("\n");
-                    const eventLine = lines.find(line => line.startsWith("event:"));
-                    const dataLine = lines.find(line => line.startsWith("data:"));
+        // Join multiple SSE data lines when present.
+        const dataLines = lines
+          .filter(line => line.startsWith("data:"))
+          .map(line => line.slice(5).trimStart());
 
-                    if (!eventLine || !dataLine) return;
+        if (!eventLine || !dataLines.length) return;
 
-                    const eventType = eventLine.slice(6).trim();
-                    const data = JSON.parse(dataLine.slice(5).trim());
+        const eventType = eventLine.slice(6).trim();
+        const data = JSON.parse(dataLines.join("\n"));
 
-                    if (eventType === "token") {
-                        // Accumulate the original Markdown as tokens arrive.
-                        markdownBuffer += data.text;
+        if (eventType === "token") {
+          // Render Markdown safely as genuine tokens arrive.
+          markdownBuffer += data.text;
 
-                        // Convert Markdown into formatted HTML.
-                        const html = marked.parse(markdownBuffer);
+          // Convert known citation IDs into Markdown links.
+          const linkedMarkdown = linkCitations(markdownBuffer);
 
-                        // Sanitize the HTML to prevent XSS attacks.
-                        const safeHtml = DOMPurify.sanitize(html);
+          // Render the Markdown with clickable citations.
+          const html = marked.parse(linkedMarkdown);
 
-                        // Display the safely rendered answer.
-                        assistantMessage.innerHTML = safeHtml;
-                    } else if (eventType === "trace") {
-                        // Show agent transitions as they occur.
-                        trace.textContent += `\n${data.message}`;
-                    } else if (eventType === "done") {
-                        // Display the final provider and full trace.
-                        trace.textContent = JSON.stringify(
-                            {routing: data.routing, trace: data.trace},
-                            null,
-                            2
-                        );
-                    } else if (eventType === "error") {
-                        // Show server-side errors.
-                        assistantMessage.textContent += `\nError: ${data.message}`;
-                    }
+          // Continue sanitizing HTML with DOMPurify before insertion.
+          answerEl.innerHTML = DOMPurify.sanitize(html);
 
-                    // Keep the newest messages visible.
-                    messages.scrollTop = messages.scrollHeight;
-                }
+          messages.scrollTop = messages.scrollHeight;
+        }
 
-                // Read the stream until the server closes it.
-                while (true) {
-                    const {value, done} = await reader.read();
-                    if (done) break;
+        else if (eventType === "routing") {
+          // Show the selected provider immediately.
+          showRouting(data);
+        }
 
-                    buffer += value.replace(/\r\n/g, "\n");
+        else if (eventType === "trace") {
+          // Show each completed LangGraph node.
+          addTimelineEvent(data.message);
+        }
 
-                    // SSE messages are separated by blank lines.
-                    let boundary;
-                    while ((boundary = buffer.indexOf("\n\n")) !== -1) {
-                        const rawEvent = buffer.slice(0, boundary);
-                        buffer = buffer.slice(boundary + 2);
-                        processEvent(rawEvent);
-                    }
-                }
+        else if (eventType === "done") {
+          receivedDone = true;
+          showRouting(data.routing);
 
-            } catch (error) {
-                // Show network or stream errors to the user.
-                assistantMessage.textContent += `\nError: ${error.message}`;
-            } finally {
-                // Allow another question after the request finishes.
-                sendButton.disabled = false;
-                input.focus();
-            }
-        });
-    </script>
+          // Replace generic node events with the detailed trace.
+          timeline.replaceChildren();
+
+          for (const entry of data.trace || []) {
+            addTimelineEvent(entry);
+          }
+
+          // Detect known validation or agent failures.
+          const failed = (data.trace || []).some(entry =>
+            entry.includes("failed") ||
+            entry.includes("WARNING:")
+          );
+
+          statusEl.textContent = failed
+            ? "Completed with warnings"
+            : "Completed";
+
+          if (failed) statusEl.classList.add("warning");
+          else statusEl.classList.remove("warning");
+        }
+
+        else if (eventType === "error") {
+          // Display streaming errors without exposing internals.
+          streamError = true;
+          statusEl.textContent = "Failed";
+          addTimelineEvent(data.message);
+        }
+      }
+
+      // Consume all SSE events from the server.
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+
+        buffer += value.replace(/\r\n/g, "\n");
+
+        let boundary;
+        while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+          const rawEvent = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+          processEvent(rawEvent);
+        }
+      }
+
+      // Detect a stream that ended unexpectedly.
+      if (!receivedDone && !streamError) {
+        throw new Error("Stream ended before completion.");
+      }
+
+    } catch (error) {
+      statusEl.textContent = "Failed";
+      addTimelineEvent(error.message);
+
+    } finally {
+      // Re-enable chat input after the request finishes.
+      sendButton.disabled = false;
+      input.focus();
+    }
+  });
+</script>
 </body>
 </html>
