@@ -1,23 +1,32 @@
 
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 
-# Restrict agent names to our three specialized workers.
+# Restrict worker names to our three specialized agents.
 AgentName = Literal["research", "code", "summary"]
 
 
 class AgentState(TypedDict):
-    # Original question submitted by the user.
+    # Original user request.
     question: str
 
-    # Agent selected by the supervisor.
+    # The next agent selected by the supervisor.
     selected_agent: AgentName
 
-    # Final answer returned by the worker.
+    # Most recent agent's response.
     answer: str
 
-    # Records which nodes executed, for debugging.
+    # History of workflow execution.
     trace: list[str]
 
-    # Record the actual LLM provider, model, and routing rationale.
-    routing: dict
+    # Ordered list of agents that should execute.
+    plan: NotRequired[list[AgentName]]
+
+    # Tracks which planned agent executes next.
+    step: NotRequired[int]
+
+    # Stores each agent's output for later coordination.
+    agent_results: NotRequired[dict[str, str]]
+
+    # Actual provider and model used by the latest agent.
+    routing: NotRequired[dict]

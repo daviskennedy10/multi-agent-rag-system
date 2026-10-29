@@ -11,29 +11,77 @@ from app.agents.code import code_agent
 # Import our real Summary Agent implementation.
 from app.agents.summary import summary_agent
 
+from app.agents.planner import create_plan
+
 
 def supervisor(state: AgentState) -> dict:
-    # Temporary routing logic to verify graph execution.
-    # We'll replace this with intelligent LLM routing.
-    question = state["question"].lower()
+    # Retrieve the existing execution plan.
+    plan = state.get("plan", [])
 
-    if "code" in question or "function" in question:
-        selected = "code"
-    elif "summarize" in question or "summary" in question:
-        selected = "summary"
+    # FIRST VISIT: Create a new plan.
+    if not plan:
+        plan = create_plan(state["question"])
+        step = 0
+
+    # SUBSEQUENT VISITS: Advance after a worker finishes.
     else:
-        selected = "research"
+        step = state.get("step", 0) + 1
 
-    # Update the state with the selected agent and trace.
+    # COMPLETION: All planned agents have executed.
+    if step >= len(plan):
+        # Retrieve the outputs saved by individual agents.
+        agent_results = state.get("agent_results", {})
+
+        # Combine findings in their original execution order.
+        sections = [
+            f"## {agent.title()} Findings\n{agent_results[agent]}"
+            for agent in plan
+            if agent in agent_results
+        ]
+
+        # Combine multiple agent outputs into one answer.
+        # Preserve the original answer for single-agent tasks.
+        final_answer = (
+            "\n\n".join(sections)
+            if len(sections) > 1
+            else state["answer"]
+        )
+
+        # Return the completed workflow state.
+        # Do NOT access plan[step] here: the plan is finished.
+        return {
+            "plan": plan,
+            "step": step,
+            "answer": final_answer,
+            "trace": state["trace"] + [
+                "Supervisor completed plan"
+            ],
+        }
+
+    # DELEGATION: More agents still need to execute.
+    # Select the next worker from the execution plan.
+    selected = plan[step]
+
+    # Return the updated state so LangGraph can route correctly.
     return {
+        "plan": plan,
+        "step": step,
         "selected_agent": selected,
-        "trace": state["trace"] + [f"Supervisor selected {selected}"],
+        "trace": state["trace"] + [
+            f"Supervisor delegated to {selected}"
+        ],
     }
 
 
-
 def route_agent(state: AgentState) -> str:
-    # LangGraph uses this value to select the next node.
+    # Read the plan and step, using safe defaults.
+    plan = state.get("plan", [])
+    step = state.get("step", 0)
+    # End the workflow when all planned agents have executed.
+    if step >= len(plan):
+        return "end"
+
+    # Otherwise, execute the next selected worker.
     return state["selected_agent"]
 
 
@@ -49,7 +97,8 @@ builder.add_node("summary", summary_agent)
 # Start execution at the supervisor.
 builder.add_edge(START, "supervisor")
 
-# Dynamically select the next node from the supervisor's state.
+
+# Route to the next worker or end when the plan is complete.
 builder.add_conditional_edges(
     "supervisor",
     route_agent,
@@ -57,42 +106,51 @@ builder.add_conditional_edges(
         "research": "research",
         "code": "code",
         "summary": "summary",
+        "end": END,
     },
 )
 
-# End after the selected worker executes.
+# Workers return to the supervisor for further coordination.
 for agent in ["research", "code", "summary"]:
-    builder.add_edge(agent, END)
+    builder.add_edge(agent, "supervisor")
+
 
 # Compile the graph into an executable workflow.
 graph = builder.compile()
 
 
 
+
+
 if __name__ == "__main__":
-    # Test all three specialized agents through the supervisor.
-    questions = [
-        "How does FastAPI dependency injection work?",
-        "Analyze this Python code:\ndef divide(a, b):\n    return a / b",
-        "Summarize FastAPI's OAuth2 security features.",
-    ]
+    # This request requires both documentation research and code work.
+    question = (
+        "Research FastAPI dependency injection "
+        "and implement a Python example."
+    )
 
-    for question in questions:
-        # Start each question with a fresh graph state.
-        result = graph.invoke({
-            "question": question,
-            "selected_agent": "research",
-            "answer": "",
-            "trace": [],
-        })
+    # Start with an empty shared state.
+    result = graph.invoke({
+        "question": question,
+        "selected_agent": "research",
+        "answer": "",
+        "trace": [],
+        "agent_results": {},
+    })
 
-        # Display the supervisor's routing decision.
-        print(f"\n{'=' * 60}")
-        print(f"QUESTION: {question}")
-        print(f"SELECTED AGENT: {result['selected_agent']}")
+    # Inspect the execution plan.
+    print("Plan:", result["plan"])
 
-        # Show a short answer preview to keep output readable.
-        print(f"ANSWER: {result['answer'][:300]}...")
+    # Verify that both agents saved their outputs.
+    print("Completed agents:", list(result["agent_results"]))
 
-        # Display which nodes executed.
-        print(f"TRACE: {result['trace']}")
+    # Inspect the complete orchestration trace.
+    print("\nTrace:")
+    for event in result["trace"]:
+        print("-", event)
+
+    # Display a preview of the combined answer.
+    print("\nFinal answer:")
+    print(result["answer"][:800])
+
+

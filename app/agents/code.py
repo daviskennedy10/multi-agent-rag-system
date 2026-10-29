@@ -20,6 +20,9 @@ def code_agent(state: AgentState) -> dict:
     # Read the user's question from LangGraph state.
     question = state["question"]
 
+    # Retrieve findings from an earlier Research Agent execution.
+    research_findings = state.get("agent_results", {}).get("research", "")
+
     try:
         # Extract the actual Python code from the user's message.
         code = extract_python_code(question)
@@ -45,11 +48,13 @@ Your responsibilities:
 """
 
         
-        # Combine the Code Agent's instructions with its task context.
+        # Build the Code Agent's prompt using the original request,
+        # AST analysis, and any earlier Research findings.
         prompt = (
             f"{system_prompt}\n\n"
-            f"User input:\n{question}\n\n"
-            f"AST analysis:\n{analysis}"
+            f"User request:\n{question}\n\n"
+            f"AST analysis:\n{analysis}\n\n"
+            f"Research findings:\n{research_findings or 'None'}"
         )
 
         # Select an LLM provider and generate the code analysis.
@@ -77,6 +82,10 @@ Your responsibilities:
                 ),
                 f"Routing reason: {routing['reason']}",
             ],
+            "agent_results": {
+                **state.get("agent_results", {}),
+                "code": answer,
+            },
         }
 
     except Exception as error:

@@ -33,6 +33,10 @@ def research_agent(state: AgentState) -> dict:
                 f"LLM: {routing['provider']} / {routing['model']}",
                 f"Routing reason: {routing['reason']}",
             ],
+            "agent_results": {
+                **state.get("agent_results", {}),
+                "research": result["answer"],
+            },
         }
 
     except Exception as error:
