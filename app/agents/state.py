@@ -30,3 +30,6 @@ class AgentState(TypedDict):
 
     # Actual provider and model used by the latest agent.
     routing: NotRequired[dict]
+
+    # Record whether a worker failed during execution.
+    error: NotRequired[str]

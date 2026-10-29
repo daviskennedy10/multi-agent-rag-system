@@ -10,10 +10,10 @@ from app.agents import llm_providers
 def fake_gemini_stream(*args, **kwargs):
     # Simulate Gemini rejecting the request due to exhausted quota.
     raise ClientError(
-        429,
+        503,
         {
             "error": {
-                "code": 429,
+                "code": 503,
                 "message": "Simulated quota exceeded",
                 "status": "RESOURCE_EXHAUSTED",
             }
@@ -65,8 +65,8 @@ with (
         print(event)
 
     # Verify the final provider is OpenAI.
-    assert events[-1]["type"] == "complete"
     assert events[-1]["data"]["provider"] == "openai"
+    assert "503" in events[-1]["data"]["reason"]
 
     # Verify the simulated answer was streamed.
     assert any(

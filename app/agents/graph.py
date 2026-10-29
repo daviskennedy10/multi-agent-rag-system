@@ -20,6 +20,21 @@ def supervisor(state: AgentState) -> dict:
     # Retrieve the existing execution plan.
     plan = state.get("plan", [])
 
+    # Stop immediately if a previous agent failed.
+    if state.get("error"):
+        return {
+            # Mark the plan as finished.
+            "step": len(plan),
+
+            # Preserve the actual failure message.
+            "answer": state["error"],
+
+            # Record why the supervisor stopped.
+            "trace": state["trace"] + [
+                "Supervisor stopped plan after agent failure"
+            ],
+        }
+
     
     # FIRST VISIT: Generate an intelligent execution plan.
     if not plan:
@@ -103,16 +118,20 @@ def supervisor(state: AgentState) -> dict:
     }
 
 
+
 def route_agent(state: AgentState) -> str:
-    # Read the plan and step, using safe defaults.
+    # Read the current plan and execution step.
     plan = state.get("plan", [])
     step = state.get("step", 0)
-    # End the workflow when all planned agents have executed.
-    if step >= len(plan):
+
+    # Stop when all agents have executed or a failure occurred.
+    if state.get("error") or step >= len(plan):
         return "end"
 
-    # Otherwise, execute the next selected worker.
+    # Otherwise, route to the selected agent.
     return state["selected_agent"]
+
+
 
 
 # Create a graph whose shared state follows AgentState.

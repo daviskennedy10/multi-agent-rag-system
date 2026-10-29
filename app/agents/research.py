@@ -11,6 +11,10 @@ import asyncio
 # Shared Tavily MCP search function.
 from app.agents.web_tools import search_web
 
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 def research_agent(state: AgentState) -> dict:
     # Extract the user's question from the shared state.
@@ -92,9 +96,13 @@ def research_agent(state: AgentState) -> dict:
     except Exception as error:
         import traceback
         traceback.print_exc()
+
+        # Record the exception in server logs for debugging.
+        logger.exception("Research agent execution failed")
         # Handle errors without crashing the entire graph.
         return {
             "answer": "Research agent couldn't complete the request.",
+            "error": f"Research failed: {type(error).__name__}",
             "trace": state["trace"] + [
                 f"Research agent failed: {type(error).__name__}",
             ],

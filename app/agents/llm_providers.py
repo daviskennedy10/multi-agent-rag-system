@@ -64,6 +64,13 @@ def stream_routed(
                     }
 
         except APIError as error:
+            # Identify why provider fallback is being skipped.
+            print(
+                f"Gemini streaming failure: "
+                f"status={error.code}, "
+                f"emitted_text={emitted_text}",
+                flush=True,
+            )
             # Only fail over for quota or temporary server errors.
             if error.code not in (429, 503) or emitted_text:
                 raise
