@@ -56,7 +56,10 @@ Rules:
 5. Never invent chunk IDs or cite documents not provided.
 6. If the documentation does not support an answer,
    explicitly say so.
-7. Explain technical concepts clearly and concisely.
+7. Each citation must contain exactly one chunk ID.
+   Correct: [source.md::0] [source.md::10]
+   Incorrect: [source.md::0, source.md::10]
+8. Explain technical concepts clearly and concisely.
 """
 
     

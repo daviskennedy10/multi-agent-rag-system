@@ -50,8 +50,18 @@ def research_agent(state: AgentState) -> dict:
         # This helps identify malformed or invented citations.
         print("RESEARCH CITATION VALIDATION:", validation, flush=True)
 
-        if validation is not None and not validation["valid"]:
-            raise ValueError("Generated answer contains invalid citations")
+        # Check whether the generated citations passed validation.
+        citations_valid = (
+            validation is not None
+            and validation["valid"]
+        )
+
+        # Record citation problems instead of hiding the completed response.
+        citation_status = (
+            "Citation IDs validated"
+            if citations_valid
+            else "WARNING: Citation validation failed"
+        )
 
         # Return the grounded answer and provider details.
         return {
@@ -70,11 +80,13 @@ def research_agent(state: AgentState) -> dict:
 
                 f"LLM: {routing['provider']} / {routing['model']}",
                 f"Routing reason: {routing['reason']}",
+                f"citation status: {citation_status}",
             ],
             "agent_results": {
                 **state.get("agent_results", {}),
                 "research": result["answer"],
             },
+            
         }
 
     except Exception as error:
