@@ -32,8 +32,12 @@ def research_agent(state: AgentState) -> dict:
         web_context = asyncio.run(search_web(question))
 
     try:
-        # Run retrieval, augmentation, and generation.
-        result = generate_with_context(question)
+        # Pass Tavily results into the RAG generator.
+        # This lets the LLM use current information when available.
+        result = generate_with_context(
+            question,
+            web_context=web_context,
+)
 
         # Extract the provider that generated the RAG answer.
         routing = result["routing"]

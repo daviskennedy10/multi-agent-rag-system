@@ -9,6 +9,12 @@ import time
 
 from app.agents.llm_router import route_llm
 
+# Type hints for our token-streaming generator.
+from collections.abc import Iterator
+
+# Gemini SDK configuration objects.
+from google.genai import types
+
 # Load API keys and model settings from .env.
 load_dotenv()
 
@@ -17,6 +23,67 @@ openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 gemini_client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
 
+
+def stream_routed(
+    question: str,
+    agent: str,
+    prompt: str,
+) -> Iterator[dict]:
+    # Select the provider using our existing routing policy.
+    decision = route_llm(question, agent)
+
+    # Tell the caller which provider was selected.
+    yield {
+        "type": "routing",
+        "data": decision,
+    }
+
+    # Stream text from Gemini when Google is selected.
+    if decision["provider"] == "google":
+        stream = gemini_client.models.generate_content_stream(
+            model=decision["model"],
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                max_output_tokens=2048,
+                thinking_config=types.ThinkingConfig(
+                    thinking_budget=0,
+                ),
+            ),
+        )
+
+        # Forward each Gemini text chunk as it arrives.
+        for chunk in stream:
+            if chunk.text:
+                yield {
+                    "type": "token",
+                    "data": chunk.text,
+                }
+
+    else:
+        # Stream text from OpenAI when OpenAI is selected.
+        stream = openai_client.chat.completions.create(
+            model=decision["model"],
+            messages=[
+                {"role": "user", "content": prompt},
+            ],
+            stream=True,
+        )
+
+        # Forward each OpenAI text delta as it arrives.
+        for chunk in stream:
+            token = chunk.choices[0].delta.content
+
+            if token:
+                yield {
+                    "type": "token",
+                    "data": token,
+                }
+
+    # Signal that model generation has completed.
+    yield {
+        "type": "complete",
+        "data": decision,
+    }
 
 
 def generate_with_openai(prompt: str) -> str:

@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Developer Documentation Assistant</title>
+
+    <style>
+        /* Basic layout and typography. */
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 850px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+
+        /* Display messages inside a scrollable chat area. */
+        #messages {
+            height: 400px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 20px;
+            white-space: pre-wrap;
+        }
+
+        /* Separate individual chat messages. */
+        .message {
+            margin-bottom: 20px;
+        }
+
+        /* Distinguish user messages from assistant responses. */
+        .user {
+            color: #2563eb;
+        }
+
+        /* Arrange the input and send button horizontally. */
+        form {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+        }
+
+        button {
+            padding: 12px 20px;
+            cursor: pointer;
+        }
+
+        /* Display execution information separately. */
+        #trace {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e2e8f0;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Developer Documentation Assistant</h1>
+    <p>Ask questions about Python, FastAPI, and developer documentation.</p>
+
+    <!-- Display the conversation here. -->
+    <div id="messages" aria-live="polite"></div>
+
+    <!-- Collect and submit user questions. -->
+    <form id="chat-form">
+        <input
+            id="question"
+            type="text"
+            placeholder="Ask a developer question..."
+            required
+        >
+        <button id="send-button" type="submit">Send</button>
+    </form>
+
+    <!-- Show agent execution and routing details. -->
+    <div id="trace">Agent trace will appear here.</div>
+
+    <script>
+        // Find the elements we need to update.
+        const form = document.getElementById("chat-form");
+        const input = document.getElementById("question");
+        const messages = document.getElementById("messages");
+        const trace = document.getElementById("trace");
+        const sendButton = document.getElementById("send-button");
+
+        // Handle a new user question.
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            // Read the question and prevent duplicate submissions.
+            const question = input.value.trim();
+            if (!question) return;
+
+            sendButton.disabled = true;
+            input.value = "";
+
+            // Display the user's message safely as plain text.
+            const userMessage = document.createElement("div");
+            userMessage.className = "message user";
+            userMessage.textContent = "You: " + question;
+            messages.appendChild(userMessage);
+
+            // Create an empty assistant response to fill progressively.
+            const assistantMessage = document.createElement("div");
+            assistantMessage.className = "message";
+            assistantMessage.textContent = "Assistant: ";
+            messages.appendChild(assistantMessage);
+
+            trace.textContent = "Processing...";
+
+            try {
+                // Send the question to our FastAPI SSE endpoint.
+                const response = await fetch("/chat/stream", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({question}),
+                });
+
+                // Reject unsuccessful HTTP responses.
+                if (!response.ok || !response.body) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                // Decode incoming bytes into text.
+                const reader = response.body
+                    .pipeThrough(new TextDecoderStream())
+                    .getReader();
+
+                let buffer = "";
+
+                // Process each complete SSE message.
+                function processEvent(rawEvent) {
+                    const lines = rawEvent.split("\n");
+                    const eventLine = lines.find(line => line.startsWith("event:"));
+                    const dataLine = lines.find(line => line.startsWith("data:"));
+
+                    if (!eventLine || !dataLine) return;
+
+                    const eventType = eventLine.slice(6).trim();
+                    const data = JSON.parse(dataLine.slice(5).trim());
+
+                    if (eventType === "token") {
+                        // Append each received text chunk.
+                        assistantMessage.textContent += data.text;
+                    } else if (eventType === "trace") {
+                        // Show agent transitions as they occur.
+                        trace.textContent += `\n${data.message}`;
+                    } else if (eventType === "done") {
+                        // Display the final provider and full trace.
+                        trace.textContent = JSON.stringify(
+                            {routing: data.routing, trace: data.trace},
+                            null,
+                            2
+                        );
+                    } else if (eventType === "error") {
+                        // Show server-side errors.
+                        assistantMessage.textContent += `\nError: ${data.message}`;
+                    }
+
+                    // Keep the newest messages visible.
+                    messages.scrollTop = messages.scrollHeight;
+                }
+
+                // Read the stream until the server closes it.
+                while (true) {
+                    const {value, done} = await reader.read();
+                    if (done) break;
+
+                    buffer += value.replace(/\r\n/g, "\n");
+
+                    // SSE messages are separated by blank lines.
+                    let boundary;
+                    while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+                        const rawEvent = buffer.slice(0, boundary);
+                        buffer = buffer.slice(boundary + 2);
+                        processEvent(rawEvent);
+                    }
+                }
+
+            } catch (error) {
+                // Show network or stream errors to the user.
+                assistantMessage.textContent += `\nError: ${error.message}`;
+            } finally {
+                // Allow another question after the request finishes.
+                sendButton.disabled = false;
+                input.focus();
+            }
+        });
+    </script>
+</body>
+</html>
