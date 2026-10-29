@@ -1,9 +1,6 @@
 
 import os
 
-# Import the AST tool that analyzes Python code structure.
-from app.agents.code_tools import analyze_python_code
-
 # Import the shared LangGraph state.
 from app.agents.state import AgentState
 
@@ -15,10 +12,32 @@ from app.agents.code_tools import (
     extract_python_code,
 )
 
+# Allow our synchronous Code Agent to invoke async MCP tools.
+import asyncio
+
+# Reuse the exact same Tavily MCP search function.
+from app.agents.web_tools import search_web
+
 
 def code_agent(state: AgentState) -> dict:
     # Read the user's question from LangGraph state.
     question = state["question"]
+
+    # Identify requests that may need up-to-date API information.
+    live_keywords = ["latest", "current", "recent", "2026"]
+
+    needs_live_search = any(
+        keyword in question.lower()
+        for keyword in live_keywords
+    )
+
+    # Search for current documentation when appropriate.
+    web_context = ""
+
+    if needs_live_search:
+        # Both Research and Code invoke the same MCP-backed tool.
+        web_context = asyncio.run(search_web(question))
+
 
     # Retrieve findings from an earlier Research Agent execution.
     research_findings = state.get("agent_results", {}).get("research", "")
@@ -55,6 +74,7 @@ Your responsibilities:
             f"User request:\n{question}\n\n"
             f"AST analysis:\n{analysis}\n\n"
             f"Research findings:\n{research_findings or 'None'}"
+            f"\nLive web search results:\n{web_context or 'None'}"
         )
 
         # Select an LLM provider and generate the code analysis.
@@ -74,12 +94,21 @@ Your responsibilities:
             "answer": answer,
             "routing": routing,
             "trace": state["trace"] + [
+                # Record the Code Agent's execution.
                 "Code agent executed",
                 "AST analysis completed",
-                (
-                    f"LLM: {routing['provider']} / "
-                    f"{routing['model']}"
+
+                # Record the MCP tool invocation when live search was used.
+                *(
+                    ["Code invoked MCP tool: tavily_search"]
+                    if needs_live_search
+                    else []
                 ),
+
+                # Record the actual LLM provider and model.
+                f"LLM: {routing['provider']} / {routing['model']}",
+
+                # Explain why the router selected that provider.
                 f"Routing reason: {routing['reason']}",
             ],
             "agent_results": {

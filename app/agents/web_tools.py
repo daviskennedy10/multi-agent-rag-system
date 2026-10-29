@@ -1,23 +1,26 @@
 
-# Import our shared MCP tool-discovery function.
+import json
+
+# Import our shared Tavily MCP connection.
 from app.agents.mcp_tools import get_tavily_tools
 
 
 async def search_web(query: str) -> str:
-    # Connect to Tavily and discover available MCP tools.
+    # Discover tools exposed by Tavily's MCP server.
     tools = await get_tavily_tools()
 
-    # Find the Tavily search tool by its exact name.
+    # Select the same MCP tool for both agents.
     search_tool = next(
         tool for tool in tools
         if tool.name == "tavily_search"
     )
 
-    # Invoke the remote MCP search tool.
-    # The query is passed as a structured tool argument.
-    result = await search_tool.ainvoke({
-        "query": query,
-    })
+    # Execute a real search through Tavily Remote MCP.
+    result = await search_tool.ainvoke({"query": query})
 
-    # Convert the tool response into text for our agents.
-    return str(result)
+    # Convert the result into text for the LLM.
+    if isinstance(result, str):
+        return result
+
+    # Preserve structured search results as JSON text.
+    return json.dumps(result, ensure_ascii=False, default=str)

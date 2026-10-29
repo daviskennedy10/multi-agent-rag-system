@@ -5,10 +5,31 @@ from app.rag.generate import generate_with_context
 # Import the shared LangGraph state structure.
 from app.agents.state import AgentState
 
+# Run asynchronous MCP tools from our synchronous LangGraph node.
+import asyncio
+
+# Shared Tavily MCP search function.
+from app.agents.web_tools import search_web
+
 
 def research_agent(state: AgentState) -> dict:
     # Extract the user's question from the shared state.
     question = state["question"]
+
+    # Search the live web when the user requests current information.
+    live_keywords = ["latest", "current", "recent", "today", "2026"]
+
+    needs_live_search = any(
+        keyword in question.lower()
+        for keyword in live_keywords
+    )
+
+    # Keep the web results separate from our static RAG evidence.
+    web_context = ""
+
+    if needs_live_search:
+        # Invoke the shared Tavily MCP search tool.
+        web_context = asyncio.run(search_web(question))
 
     try:
         # Run retrieval, augmentation, and generation.
@@ -30,6 +51,14 @@ def research_agent(state: AgentState) -> dict:
             "trace": state["trace"] + [
                 "Research agent executed RAG",
                 f"Retrieved {len(result['chunks'])} chunks",
+
+                # Record whether Research actually invoked Tavily.
+                *(
+                    ["Research invoked MCP tool: tavily_search"]
+                    if needs_live_search
+                    else []
+                ),
+
                 f"LLM: {routing['provider']} / {routing['model']}",
                 f"Routing reason: {routing['reason']}",
             ],
