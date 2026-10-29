@@ -86,6 +86,10 @@
 
     <!-- Show agent execution and routing details. -->
     <div id="trace">Agent trace will appear here.</div>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Remove potentially dangerous HTML and attributes. -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+
 
     <script>
         // Find the elements we need to update.
@@ -120,6 +124,9 @@
 
             trace.textContent = "Processing...";
 
+            // Preserve generated Markdown while tokens arrive.
+            let markdownBuffer = "";
+
             try {
                 // Send the question to our FastAPI SSE endpoint.
                 const response = await fetch("/chat/stream", {
@@ -152,8 +159,17 @@
                     const data = JSON.parse(dataLine.slice(5).trim());
 
                     if (eventType === "token") {
-                        // Append each received text chunk.
-                        assistantMessage.textContent += data.text;
+                        // Accumulate the original Markdown as tokens arrive.
+                        markdownBuffer += data.text;
+
+                        // Convert Markdown into formatted HTML.
+                        const html = marked.parse(markdownBuffer);
+
+                        // Sanitize the HTML to prevent XSS attacks.
+                        const safeHtml = DOMPurify.sanitize(html);
+
+                        // Display the safely rendered answer.
+                        assistantMessage.innerHTML = safeHtml;
                     } else if (eventType === "trace") {
                         // Show agent transitions as they occur.
                         trace.textContent += `\n${data.message}`;

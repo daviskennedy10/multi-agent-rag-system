@@ -10,6 +10,9 @@ from app.agents.llm_providers import generate_routed
 from app.agents.state import AgentState
 from app.rag.citations import validate_citations
 
+# Reuse the streaming interface already used by Research and Code.
+from app.agents.streaming import generate_streamed
+
 
 def summary_agent(state: AgentState) -> dict:
     # Read the user's summarization request.
@@ -65,8 +68,9 @@ If multiple chunks support a claim, cite them separately.
             f"Summarization request: {question}"
         )
 
-        # Select a provider based on task complexity.
-        result = generate_routed(
+        # Stream Gemini or OpenAI tokens through LangGraph.
+        # The completed answer is still returned for citation validation.
+        result = generate_streamed(
             question=question,
             agent="summary",
             prompt=prompt,

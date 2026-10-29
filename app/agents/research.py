@@ -32,18 +32,23 @@ def research_agent(state: AgentState) -> dict:
         web_context = asyncio.run(search_web(question))
 
     try:
-        # Pass Tavily results into the RAG generator.
-        # This lets the LLM use current information when available.
+        # Generate real model tokens through LangGraph.
+        # The completed answer remains available for citation validation.
         result = generate_with_context(
             question,
             web_context=web_context,
-)
+            stream=True,
+        )
 
         # Extract the provider that generated the RAG answer.
         routing = result["routing"]
 
         # Check whether the answer contains invalid citations.
         validation = result["citation_validation"]
+
+        # Inspect citation validation after streaming completes.
+        # This helps identify malformed or invented citations.
+        print("RESEARCH CITATION VALIDATION:", validation, flush=True)
 
         if validation is not None and not validation["valid"]:
             raise ValueError("Generated answer contains invalid citations")

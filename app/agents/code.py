@@ -18,6 +18,8 @@ import asyncio
 # Reuse the exact same Tavily MCP search function.
 from app.agents.web_tools import search_web
 
+# Generate real model tokens through LangGraph custom events.
+from app.agents.streaming import generate_streamed
 
 def code_agent(state: AgentState) -> dict:
     # Read the user's question from LangGraph state.
@@ -77,8 +79,9 @@ Your responsibilities:
             f"\nLive web search results:\n{web_context or 'None'}"
         )
 
-        # Select an LLM provider and generate the code analysis.
-        result = generate_routed(
+        # Generate the Code Agent's response incrementally.
+        # LangGraph forwards each token to our SSE endpoint.
+        result = generate_streamed(
             question=question,
             agent="code",
             prompt=prompt,

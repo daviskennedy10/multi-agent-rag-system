@@ -87,28 +87,35 @@ def chat_stream(request: ChatRequest):
             # Each update arrives after a graph node finishes.
             final_state = dict(initial_state)
 
-            for update in graph.stream(
+            
+            # Receive both real LLM tokens and completed node updates.
+            for mode, chunk in graph.stream(
                 initial_state,
-                stream_mode="updates",
+                stream_mode=["custom", "updates"],
             ):
-                for node_name, changes in update.items():
-                    # Merge each node's state updates.
-                    final_state.update(changes)
 
-                    # Report which node just completed.
-                    yield emit("trace", {
-                        "node": node_name,
-                        "message": f"{node_name} completed",
-                    })
+                if mode == "custom":
+                    # Forward genuine LLM text as it is generated.
+                    if chunk["type"] == "token":
+                        yield emit("token", {
+                            "text": chunk["data"],
+                        })
 
-            # Send the completed answer in small text chunks.
-            # This tests SSE delivery, NOT actual LLM token streaming.
-            answer = final_state.get("answer", "")
+                    # Forward the selected provider and model.
+                    elif chunk["type"] == "routing":
+                        yield emit("routing", chunk["data"])
 
-            for start in range(0, len(answer), 40):
-                yield emit("token", {
-                    "text": answer[start:start + 40],
-                })
+                elif mode == "updates":
+                    # A LangGraph node has completed execution.
+                    for node_name, changes in chunk.items():
+                        # Merge its updated fields into final state.
+                        final_state.update(changes)
+
+                        # Tell the browser which node completed.
+                        yield emit("trace", {
+                            "node": node_name,
+                            "message": f"{node_name} completed",
+                        })
 
             # Send final routing and trace information.
             yield emit("done", {
