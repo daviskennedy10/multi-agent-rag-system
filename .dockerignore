@@ -1,0 +1,28 @@
+
+# Exclude API keys or local environment files.
+.env
+.env.*
+!.env.example
+
+# Exclude virtual environments.
+.venv/
+venv/
+
+# Exclude Python cache files.
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Exclude Git history and local editor settings.
+.git/
+.vscode/
+.idea/
+
+# Exclude local tests and temporary outputs.
+tests/
+data/
+docs/
+*.log
+.DS_Store
+
+# Keep chroma_index/ included: our deployed RAG needs it.

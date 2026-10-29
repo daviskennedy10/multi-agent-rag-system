@@ -13,19 +13,49 @@ from app.agents.summary import summary_agent
 
 from app.agents.planner import create_plan
 
+# Import our structured LLM planner.
+from app.agents.llm_planner import create_llm_plan
 
 def supervisor(state: AgentState) -> dict:
     # Retrieve the existing execution plan.
     plan = state.get("plan", [])
 
-    # FIRST VISIT: Create a new plan.
+    
+    # FIRST VISIT: Generate an intelligent execution plan.
     if not plan:
-        plan = create_plan(state["question"])
         step = 0
 
-    # SUBSEQUENT VISITS: Advance after a worker finishes.
+        try:
+            # Ask the LLM to select the appropriate agents.
+            llm_plan = create_llm_plan(state["question"])
+
+            # Extract the validated agent sequence.
+            plan = llm_plan.agents
+
+            # Record why the supervisor chose these agents.
+            planning_event = (
+                f"LLM supervisor plan: {plan}. "
+                f"Reason: {llm_plan.reason}"
+            )
+
+        except Exception as error:
+            # Fall back to our original keyword-based planner.
+            # This keeps the workflow operational if OpenAI fails.
+            plan = create_plan(state["question"])
+
+            planning_event = (
+                f"LLM planning failed: {type(error).__name__}. "
+                f"Using fallback plan: {plan}"
+            )
+
+        # Record the planning decision in the execution trace.
+        trace = state["trace"] + [planning_event]
+
+    # SUBSEQUENT VISITS: Move to the next planned agent.
     else:
         step = state.get("step", 0) + 1
+        trace = state["trace"]
+
 
     # COMPLETION: All planned agents have executed.
     if step >= len(plan):
@@ -53,7 +83,7 @@ def supervisor(state: AgentState) -> dict:
             "plan": plan,
             "step": step,
             "answer": final_answer,
-            "trace": state["trace"] + [
+            "trace": trace + [
                 "Supervisor completed plan"
             ],
         }
@@ -67,7 +97,7 @@ def supervisor(state: AgentState) -> dict:
         "plan": plan,
         "step": step,
         "selected_agent": selected,
-        "trace": state["trace"] + [
+        "trace": trace + [
             f"Supervisor delegated to {selected}"
         ],
     }

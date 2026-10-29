@@ -7,14 +7,28 @@ from openai import OpenAI
 
 from app.rag.ingest import load_documents
 
+from pathlib import Path
+
 # Load API credentials from our .env file.
 load_dotenv()
 
 # Initialize our OpenAI API client.
 openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-# Create or connect to our persistent Chroma database.
-chroma_client = chromadb.PersistentClient(path="./chroma_index")
+# Locate the project root using this file's location.
+# vector_store.py is inside app/rag/, so parents[2] is the root.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+# Use CHROMA_PATH if configured, otherwise use the project's index.
+# This works locally and inside our Docker container.
+CHROMA_PATH = Path(
+    os.getenv("CHROMA_PATH", str(PROJECT_ROOT / "chroma_index"))
+).resolve()
+
+# Open our existing persistent Chroma database.
+chroma_client = chromadb.PersistentClient(
+    path=str(CHROMA_PATH)
+)
 
 # Open the collection where documentation is stored.
 collection = chroma_client.get_or_create_collection(
