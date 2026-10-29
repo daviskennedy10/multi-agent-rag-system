@@ -14,6 +14,8 @@ from ragas.metrics.collections import Faithfulness
 # Our existing RAG pipeline.
 from app.rag.generate import generate_with_context
 
+import time
+
 
 async def evaluate_dataset():
     # Load environment variables, including our OpenAI API key.
@@ -77,13 +79,17 @@ async def evaluate_dataset():
         print(f"Question: {question}", flush=True)
 
         try:
-            # Generate an answer and preserve retrieved evidence.
-            # to_thread prevents the synchronous generator from
-            # blocking our asynchronous evaluation function.
+            # Start timing immediately before RAG generation.
+            start_time = time.perf_counter()
+
+            # Run retrieval, context construction, and generation.
             rag_result = await asyncio.to_thread(
                 generate_with_context,
                 question,
             )
+
+            # Measure total RAG generation latency in seconds.
+            latency_seconds = time.perf_counter() - start_time
 
             # Judge whether generated claims are supported by context.
             score = await metric.ascore(
@@ -103,9 +109,11 @@ async def evaluate_dataset():
                     chunk["id"] for chunk in rag_result["chunks"]
                 ],
                 "citation_validation": rag_result["citation_validation"],
+                "latency_seconds": round(latency_seconds, 3),
             })
 
             print(f"Faithfulness: {score.value:.4f}", flush=True)
+            print(f"Latency: {latency_seconds:.2f}s")
 
         except Exception as error:
             # Record failures instead of silently skipping questions.

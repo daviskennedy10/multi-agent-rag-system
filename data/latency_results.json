@@ -1,0 +1,32 @@
+[
+  {
+    "id": "q1",
+    "latency_seconds": 4.03,
+    "provider": "openai",
+    "success": true
+  },
+  {
+    "id": "q2",
+    "latency_seconds": 3.874,
+    "provider": "openai",
+    "success": true
+  },
+  {
+    "id": "q3",
+    "latency_seconds": 3.224,
+    "provider": "openai",
+    "success": true
+  },
+  {
+    "id": "q4",
+    "latency_seconds": 3.283,
+    "provider": "openai",
+    "success": true
+  },
+  {
+    "id": "q5",
+    "latency_seconds": 2.269,
+    "provider": "openai",
+    "success": true
+  }
+]

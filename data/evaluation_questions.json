@@ -2,22 +2,27 @@
 [
   {
     "id": "q1",
-    "question": "How does dependency injection work in FastAPI?"
+    "question": "How does dependency injection work in FastAPI?",
+    "reference": "FastAPI uses Depends() to declare dependencies for path operation functions. FastAPI automatically executes dependency functions, resolves nested dependencies, validates their parameters, and injects their return values into the path operation functions."
   },
   {
     "id": "q2",
-    "question": "How do I implement OAuth2 authentication in FastAPI?"
+    "question": "How do I implement OAuth2 authentication in FastAPI?",
+    "reference": "FastAPI provides OAuth2PasswordBearer for OAuth2 password-flow authentication using bearer tokens. Configure tokenUrl, implement a token endpoint that authenticates credentials and issues tokens, and use dependencies to retrieve and validate bearer tokens from Authorization headers. FastAPI integrates security schemes with OpenAPI documentation and supports OAuth2 scopes for authorization."
   },
   {
     "id": "q3",
-    "question": "How can I upload files using FastAPI?"
+    "question": "How can I upload files using FastAPI?",
+    "reference": "FastAPI accepts uploaded files using File and UploadFile parameters in path operation functions. File uploads use multipart form data and require python-multipart. UploadFile provides asynchronous methods such as read() and exposes an underlying file object for synchronous access."
   },
   {
     "id": "q4",
-    "question": "What is the difference between def and async def in FastAPI?"
+    "question": "What is the difference between def and async def in FastAPI?",
+    "reference": "FastAPI supports synchronous path operation functions declared with def and asynchronous functions declared with async def. Use async def when calling awaitable asynchronous I/O operations. Regular def functions are executed in an external thread pool so blocking synchronous operations do not directly block the event loop."
   },
   {
     "id": "q5",
-    "question": "How does FastAPI validate request bodies using Pydantic?"
+    "question": "How does FastAPI validate request bodies using Pydantic?",
+    "reference": "FastAPI uses Pydantic models and Python type annotations to define expected request body structures. It parses incoming JSON, validates field types and constraints, converts compatible values, returns structured validation errors for invalid requests, and generates OpenAPI schemas from the models."
   }
 ]

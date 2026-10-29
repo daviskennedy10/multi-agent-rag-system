@@ -1,0 +1,14 @@
+[
+  {
+    "label": "first_request",
+    "ttft_seconds": 10.967,
+    "total_seconds": 13.191,
+    "completed": true
+  },
+  {
+    "label": "warm_request",
+    "ttft_seconds": 1.893,
+    "total_seconds": 4.251,
+    "completed": true
+  }
+]

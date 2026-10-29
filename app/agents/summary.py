@@ -13,6 +13,8 @@ from app.rag.citations import validate_citations
 # Reuse the streaming interface already used by Research and Code.
 from app.agents.streaming import generate_streamed
 
+from app.agents.document_tools import retrieve_related_document
+
 
 def summary_agent(state: AgentState) -> dict:
     # Read the user's summarization request.
@@ -20,7 +22,25 @@ def summary_agent(state: AgentState) -> dict:
 
     try:
         # Retrieve documentation relevant to the requested topic.
-        chunks = retrieve(question, k=5)
+        chunks = retrieve_related_document(question)
+
+        # Bound the document context to control token usage.
+        # Preserve document order while limiting total text.
+        MAX_CONTEXT_CHARS = 24000
+
+        selected_chunks = []
+        used_chars = 0
+
+        for chunk in chunks:
+            # Stop before exceeding our context budget.
+            if used_chars + len(chunk["text"]) > MAX_CONTEXT_CHARS:
+                break
+
+            selected_chunks.append(chunk)
+            used_chars += len(chunk["text"])
+
+        # Use only the selected chunks for generation and citations.
+        chunks = selected_chunks
 
         # Handle cases where no documentation is available.
         if not chunks:
@@ -95,25 +115,38 @@ If multiple chunks support a claim, cite them separately.
         if not validation["valid"]:
             raise ValueError("Summary contains invalid citations")
 
-        # Return the summary and provider-routing information.
+        # Preserve the summary for subsequent agents and the supervisor.
         return {
             "answer": answer,
             "routing": routing,
+
+            # Save Summary's findings in shared LangGraph state.
+            "agent_results": {
+                **state.get("agent_results", {}),
+                "summary": answer,
+            },
+
+            # Preserve execution history and routing transparency.
             "trace": state["trace"] + [
                 "Summary agent executed",
-                f"Summarized {len(chunks)} retrieved chunks",
+                f"Summary assembled {len(chunks)} document chunks",
                 f"LLM: {routing['provider']} / {routing['model']}",
                 f"Routing reason: {routing['reason']}",
             ],
         }
 
+
     except Exception as error:
-        # Display the actual error while debugging.
+        # Record the failure for local debugging.
         print(f"Summary agent error: {type(error).__name__}: {error}")
 
-        # Return a safe failure response without crashing LangGraph.
+        # Notify the supervisor that Summary failed.
         return {
             "answer": "Document summarization failed.",
+
+            # Prevent the supervisor from treating this as success.
+            "error": f"Summary failed: {type(error).__name__}",
+
             "trace": state["trace"] + [
                 f"Summary agent failed: {type(error).__name__}",
             ],
